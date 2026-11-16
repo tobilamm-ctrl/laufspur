@@ -27,9 +27,11 @@ Alles läuft im Browser; die GPX-Datei wird nirgends hochgeladen.
 
 Spurwerk ist eine einzige Datei (`index.html`) ohne Server-Teil. So geht es:
 
-1. In `site.json` Name, Anschrift, E-Mail und den Namen deines Hosters eintragen. Mit `"impressum": true` erscheint zusätzlich ein Impressum-Link.
-2. `python3 src/build.py` ausführen.
-3. Nur `index.html` auf den Webspace hochladen (z. B. in einen Ordner `spurwerk/`).
+1. `site.json` nach `site.local.json` kopieren und dort Name, Anschrift, E-Mail, Hoster und Aufsichtsbehörde eintragen. Mit `"impressum": true` erscheint zusätzlich ein Impressum-Link. `site.local.json` steht in `.gitignore` und landet nicht im Repo.
+2. `python3 src/build.py --webspace` ausführen. Das schreibt `dist/index.html` mit deinen Angaben (ebenfalls nicht im Repo).
+3. Nur `dist/index.html` auf den Webspace hochladen (z. B. als `spurwerk/index.html`).
+
+Die `index.html` im Repo wird ohne `--webspace` gebaut und enthält nur Platzhalter.
 
 Die Datenschutzhinweise öffnen sich über den Link im Fuß der Seite oder direkt mit `…/index.html#datenschutz`. Leere Felder aus `site.json` erscheinen dort gelb markiert als Platzhalter. Der Text ist eine Vorlage und keine Rechtsberatung; prüfe ihn vor dem Veröffentlichen, besonders den Abschnitt zum Hoster.
 

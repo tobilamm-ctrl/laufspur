@@ -1,10 +1,13 @@
 {
-  "_hinweis": "Vor dem Veröffentlichen ausfüllen und danach 'python3 src/build.py' ausführen. Leere Felder erscheinen im Tool als markierte Platzhalter.",
+  "_hinweis": "Vorlage. Eigene Angaben in site.local.json eintragen (wird nicht ins Repo übernommen); fehlt sie, gilt diese Datei. Danach 'python3 src/build.py' ausführen.",
   "verantwortlich": {
     "name": "",
     "anschrift": "",
     "email": ""
   },
   "hoster": "",
-  "impressum": false
+  "impressum": false,
+  "hosterAuftragsverarbeiter": false,
+  "aufsicht": "",
+  "stand": "November 2026"
 }

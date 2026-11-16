@@ -1,7 +1,9 @@
 """Baut die eigenständige index.html aus src/parts/, den Schriften und einer GPX-Beispieldatei.
 
-Aufruf:  python3 src/build.py [beispiel.gpx] [ausgabe.html] [--fragment]
+Aufruf:  python3 src/build.py [beispiel.gpx] [ausgabe.html] [--fragment] [--webspace]
 --fragment lässt das Dokument-Gerüst (doctype, head, body) weg.
+--webspace nimmt die Angaben aus site.local.json und schreibt nach dist/index.html (beides nicht im Repo).
+Ohne --webspace gelten die Platzhalter aus site.json; so bleiben persönliche Angaben aus dem Repo heraus.
 """
 import base64, json, re, sys, datetime, pathlib
 
@@ -9,7 +11,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 PARTS = ROOT / 'src' / 'parts'
 args = [a for a in sys.argv[1:] if not a.startswith('--')]
 gpx = pathlib.Path(args[0]) if len(args) > 0 else ROOT / 'beispiel' / 'beispiellauf.gpx'
-out = pathlib.Path(args[1]) if len(args) > 1 else ROOT / 'index.html'
+out = pathlib.Path(args[1]) if len(args) > 1 else ROOT / ('dist/index.html' if '--webspace' in sys.argv else 'index.html')
+out.parent.mkdir(parents=True, exist_ok=True)
 
 def sample(path):
     s = path.read_text(encoding='utf-8')
@@ -37,7 +40,11 @@ def sample(path):
 fonts = {k: base64.b64encode((ROOT / 'fonts' / f'{k}.woff2').read_bytes()).decode() for k in ['anyN', 'anyI', 'chivo', 'hanken']}
 read = lambda n: (PARTS / n).read_text(encoding='utf-8')
 script = '\n'.join(read(n) for n in ['core.js', 'sports.js', 'draw.js', 'templates.js', 'app.js', 'legal.js'])
-site = json.loads((ROOT / 'site.json').read_text(encoding='utf-8'))
+webspace = '--webspace' in sys.argv
+site_file = ROOT / ('site.local.json' if webspace else 'site.json')
+if webspace and not site_file.exists():
+    sys.exit('site.local.json fehlt: Vorlage site.json kopieren und ausfüllen.')
+site = json.loads(site_file.read_text(encoding='utf-8'))
 jspdf = (ROOT / 'vendor' / 'jspdf.umd.min.js').read_text(encoding='utf-8')
 body = read('head.html') + '\n' + read('markup.html') + '\n<script>\n' + jspdf + '\n</script>\n<script>\n' + script + '</script>\n'
 body = body.replace('__FONTS__', json.dumps(fonts)).replace('__SAMPLE__', json.dumps(sample(gpx), separators=(',', ':'))).replace('__SITE__', json.dumps(site, ensure_ascii=False))
@@ -47,4 +54,4 @@ else:
     out.write_text('<!doctype html><html lang="de"><head><meta charset="utf-8">'
                    '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>'
                    + body + '</body></html>\n', encoding='utf-8')
-print(f'{out} geschrieben ({out.stat().st_size // 1024} KB)')
+print(f'{out} geschrieben ({out.stat().st_size // 1024} KB, Angaben aus {site_file.name})')
