@@ -1,29 +1,42 @@
-"""Baut die eigenständige index.html aus src/laufspur.src.html, den Schriften und einer GPX-Beispieldatei.
+"""Baut die eigenständige index.html aus src/parts/, den Schriften und einer GPX-Beispieldatei.
 
-Aufruf:  python3 src/build.py [beispiel.gpx] [ausgabe.html]
+Aufruf:  python3 src/build.py [beispiel.gpx] [ausgabe.html] [--fragment]
+--fragment lässt das Dokument-Gerüst (doctype, head, body) weg.
 """
 import base64, json, re, sys, datetime, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-gpx = pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / 'beispiel' / 'beispiellauf.gpx'
-out = pathlib.Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / 'index.html'
+PARTS = ROOT / 'src' / 'parts'
+args = [a for a in sys.argv[1:] if not a.startswith('--')]
+gpx = pathlib.Path(args[0]) if len(args) > 0 else ROOT / 'beispiel' / 'beispiellauf.gpx'
+out = pathlib.Path(args[1]) if len(args) > 1 else ROOT / 'index.html'
 
 def sample(path):
     s = path.read_text(encoding='utf-8')
-    pts = re.findall(r'<trkpt lat="([-\d.]+)" lon="([-\d.]+)">\s*<ele>([-\d.]+)</ele>\s*<time>([^<]+)</time>', s)
+    blocks = re.findall(r'<trkpt\b([^>]*)>(.*?)</trkpt>', s, re.S)
+    pts = []
+    for attrs, inner in blocks:
+        la = re.search(r'lat="([-\d.]+)"', attrs); lo = re.search(r'lon="([-\d.]+)"', attrs)
+        e = re.search(r'<ele>([-\d.]+)</ele>', inner); t = re.search(r'<time>([^<]+)</time>', inner)
+        hr = re.search(r'<(?:\w+:)?hr>(\d+)</(?:\w+:)?hr>', inner)
+        if la and lo and e and t:
+            pts.append((la.group(1), lo.group(1), e.group(1), t.group(1), hr.group(1) if hr else None))
     if len(pts) > 2500:
         pts = pts[::2] + ([pts[-1]] if len(pts) % 2 == 0 else [])
+    has_hr = all(p[4] for p in pts)
     iso = lambda t: datetime.datetime.fromisoformat(t.replace('Z', '+00:00'))
     t0 = iso(pts[0][3]); d = []; pl = pa = pe = pt = 0
-    for la, lo, e, t in pts:
+    for la, lo, e, t, hr in pts:
         la = round(float(la) * 1e6); lo = round(float(lo) * 1e6); e = round(float(e) * 10)
         tt = int((iso(t) - t0).total_seconds())
-        d += [la - pl, lo - pa, e - pe, tt - pt]; pl, pa, pe, pt = la, lo, e, tt
+        d += [la - pl, lo - pa, e - pe, tt - pt] + ([int(hr)] if has_hr else []); pl, pa, pe, pt = la, lo, e, tt
     meta = {k: float(v) for k, v in re.findall(r'<(totalTime|totalDistance|cumulativeClimb)>([\d.]+)<', s)}
-    return {'t0': pts[0][3], 'd': d, 'meta': meta, 'file': path.name}
+    return {'t0': pts[0][3], 'd': d, 'hr': has_hr, 'meta': meta, 'file': path.name}
 
 fonts = {k: base64.b64encode((ROOT / 'fonts' / f'{k}.woff2').read_bytes()).decode() for k in ['anyN', 'anyI', 'chivo', 'hanken']}
-body = (ROOT / 'src' / 'laufspur.src.html').read_text(encoding='utf-8')
+read = lambda n: (PARTS / n).read_text(encoding='utf-8')
+script = '\n'.join(read(n) for n in ['core.js', 'draw.js', 'templates.js', 'app.js'])
+body = read('head.html') + '\n' + read('markup.html') + '\n<script>\n' + script + '</script>\n'
 body = body.replace('__FONTS__', json.dumps(fonts)).replace('__SAMPLE__', json.dumps(sample(gpx), separators=(',', ':')))
 if '--fragment' in sys.argv:
     out.write_text(body, encoding='utf-8')

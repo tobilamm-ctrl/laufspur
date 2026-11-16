@@ -1,0 +1,143 @@
+<header class="mast">
+  <div class="mast-in">
+    <h1 class="logo"><span class="speed" aria-hidden="true"><i></i><i></i><i></i></span>LAUFSPUR</h1>
+    <p class="tag">GPX rein. Poster raus.</p>
+    <div class="run" id="runchip"><span>Lauf wird geladen …</span></div>
+  </div>
+</header>
+
+<main class="studio">
+  <aside class="controls" aria-label="Poster einstellen">
+    <details class="sec" id="sec-strecke" open>
+      <summary><h2><span class="lane-no"><b>Bahn 1</b></span>Strecke</h2><span class="sum" id="sum-strecke"></span></summary>
+      <div class="sec-body">
+      <div class="drop">
+        <label class="btn btn-primary btn-small" for="gpx"><span>GPX-Dateien wählen</span></label>
+        <input type="file" id="gpx" multiple accept=".gpx,application/gpx+xml,application/xml,text/xml">
+        <span class="hint">Eine Datei ergibt ein Lauf-Poster, mehrere Dateien ein Jahresposter. Du kannst die Dateien auch auf das Poster ziehen.</span>
+        <div class="file-line" id="fileline"></div>
+      </div>
+      <div class="field" id="runpickwrap" hidden>
+        <label for="runpick">Anzeigen</label>
+        <select id="runpick" class="select"></select>
+      </div>
+      <div class="field">
+        <label for="privacy">Privatzone</label>
+        <div class="range-row"><input type="range" id="privacy" min="0" max="600" step="50" value="200"><span class="range-val" id="privacyval">200 m</span></div>
+        <p class="hint">Blendet Anfang und Ende der Strecke aus, damit deine Haustür nicht auf dem Poster steht. Die Kennzahlen bleiben vollständig.</p>
+      </div>
+      </div>
+    </details>
+
+    <details class="sec" id="sec-vorlage">
+      <summary><h2><span class="lane-no"><b>Bahn 2</b></span>Vorlage</h2><span class="sum" id="sum-vorlage"></span></summary>
+      <div class="sec-body">
+      <div class="coll-only" hidden>
+        <span class="sub-h">Ansicht</span>
+        <div class="chips" id="viewchips" role="radiogroup" aria-label="Ansicht"></div>
+      </div>
+      <div class="tpl-grid" id="tplgrid"></div>
+      <div class="colors">
+        <label class="color-field" for="col-bg"><input type="color" id="col-bg"><span>Hintergrund</span></label>
+        <label class="color-field" for="col-fg"><input type="color" id="col-fg"><span id="col-fg-label">Akzent</span></label>
+        <button type="button" class="linkbtn" id="col-reset">Originalfarben</button>
+      </div>
+      </div>
+    </details>
+
+    <details class="sec" id="sec-text">
+      <summary><h2><span class="lane-no"><b>Bahn 3</b></span>Text &amp; Ergebnis</h2><span class="sum" id="sum-text"></span></summary>
+      <div class="sec-body">
+      <div class="field"><label for="title">Titel</label><input type="text" id="title" maxlength="40"></div>
+      <div class="field"><label for="sub">Untertitel</label><input type="text" id="sub" maxlength="60" placeholder="z. B. Ort oder Veranstaltung"></div>
+      <div class="field"><label for="name">Name</label><input type="text" id="name" maxlength="40" placeholder="z. B. dein Name"></div>
+      <div class="single-only field-row">
+        <div class="field"><label for="rank">Platzierung</label><input type="text" id="rank" maxlength="20" placeholder="87 / 1.240"></div>
+        <div class="field"><label for="bibno">Startnummer</label><input type="text" id="bibno" maxlength="8" placeholder="1234"></div>
+        <div class="field"><label for="offtime">Offizielle Zeit</label><input type="text" id="offtime" maxlength="8" placeholder="1:43:58" inputmode="numeric"></div>
+      </div>
+      <p class="hint single-only" id="offhint">Die offizielle Zeit ersetzt die Zeit der Uhr in Zeit, Pace und Tempo.</p>
+      </div>
+    </details>
+
+    <details class="sec single-only" id="sec-marks">
+      <summary><h2><span class="lane-no"><b>Bahn 4</b></span>Markierungen</h2><span class="sum" id="sum-marks"></span></summary>
+      <div class="sec-body">
+      <button type="button" class="btn btn-ghost btn-small" id="markmode" aria-pressed="false"><span>Markierung setzen</span></button>
+      <p class="hint">Klicke danach auf die Strecke im Poster. Der Text erscheint dort als Notiz, z. B. „Wendepunkt“ oder „hier kam der Regen“.</p>
+      <ol class="marks" id="marklist"></ol>
+      </div>
+    </details>
+
+    <details class="sec single-only" id="sec-zahlen">
+      <summary><h2><span class="lane-no"><b>Bahn 5</b></span>Kennzahlen</h2><span class="sum" id="sum-zahlen"></span></summary>
+      <div class="sec-body">
+      <div class="chips" id="statchips"></div>
+      </div>
+    </details>
+
+    <details class="sec" id="sec-elemente">
+      <summary><h2><span class="lane-no"><b>Bahn 6</b></span>Elemente</h2><span class="sum" id="sum-elemente"></span></summary>
+      <div class="sec-body">
+      <span class="sub-h">Strecke</span>
+      <div class="chips" id="elchips"></div>
+      <p class="hint mapstatus" id="mapstatus" hidden></p>
+      <div class="single-only grid-gap">
+        <span class="sub-h">Diagramme</span>
+        <div class="chips" id="graphchips"></div>
+        <div class="field">
+          <label for="rot">Ausrichtung</label>
+          <div class="range-row"><input type="range" id="rot" min="-180" max="180" step="5" value="0"><span class="range-val" id="rotval">0°</span></div>
+          <label class="chip"><input type="checkbox" id="rotauto"><span>Automatisch so drehen, dass die Strecke die Fläche füllt</span></label>
+        </div>
+        <span class="sub-h">Foto</span>
+        <div class="photo-row">
+          <label class="btn btn-ghost btn-small" for="photo"><span>Foto wählen</span></label>
+          <input type="file" id="photo" accept="image/*">
+          <button type="button" class="linkbtn" id="photodel" hidden>Foto entfernen</button>
+        </div>
+        <p class="hint">Das Foto liegt hinter der Strecke, z. B. ein Zielfoto. Es wird verkleinert und bleibt im Browser.</p>
+      </div>
+      </div>
+    </details>
+
+    <details class="sec" id="sec-format">
+      <summary><h2><span class="lane-no"><b>Bahn 7</b></span>Format</h2><span class="sum" id="sum-format"></span></summary>
+      <div class="sec-body">
+      <div class="chips" id="fmtchips" role="radiogroup" aria-label="Format"></div>
+      <p class="hint">Das PDF hat rundum 3 mm Beschnittzugabe, wie Druckereien es verlangen.</p>
+      </div>
+    </details>
+
+    <details class="sec" id="sec-preset">
+      <summary><h2><span class="lane-no"><b>Bahn 8</b></span>Meine Vorlage</h2><span class="sum" id="sum-preset"></span></summary>
+      <div class="sec-body">
+      <p class="hint">Speichere deine Einstellungen als Datei und lade sie später wieder, dann brauchst du nur noch die neue GPX-Datei. Gespeichert werden Vorlage, Farben, Kennzahlen, Elemente, Format, Privatzone und Name. Titel, Ergebnis, Markierungen und Foto gehören zum einzelnen Lauf und bleiben außen vor.</p>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary btn-small" id="presetsave"><span>Einstellungen speichern</span></button>
+        <label class="btn btn-ghost btn-small" for="presetfile"><span>Einstellungen laden</span></label>
+        <input type="file" id="presetfile" accept=".json,application/json">
+      </div>
+      <p class="hint">Dieser Browser merkt sich deine letzten Einstellungen außerdem automatisch. <button type="button" class="linkbtn" id="presetreset">Alles zurücksetzen</button></p>
+      </div>
+    </details>
+  </aside>
+
+  <section class="stage" id="stage" aria-label="Vorschau">
+    <div class="toolbar">
+      <div class="now" id="now"></div>
+      <div class="export">
+        <label class="sub-h" for="size">Größe</label>
+        <select id="size" class="select"></select>
+        <button class="btn btn-primary" id="pngbtn" type="button"><span>PNG</span></button>
+        <button class="btn btn-ghost" id="pdfbtn" type="button"><span>PDF</span></button>
+        <button class="btn btn-ghost" id="svgbtn" type="button"><span>SVG</span></button>
+      </div>
+    </div>
+    <div class="poster" id="poster"></div>
+    <p class="foot" id="foot">Die GPX-Dateien bleiben in deinem Browser. SVG ist verlustfrei skalierbar, das PDF ist für die Druckerei gedacht.</p>
+  </section>
+</main>
+
+<svg id="measure" aria-hidden="true"><text x="0" y="50"></text></svg>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
