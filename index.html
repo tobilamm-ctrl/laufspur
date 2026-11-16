@@ -1108,7 +1108,10 @@ function bottomBlock(C,st,items){
   items=items||statItems(S,o.stats.filter(k=>k!==(st.hero&&st.hero.key)));
   const rows=rowsFor(items.length),sh=rows*(H<1100?78:92),sy=H-60-sh;
   let heroBase=rows?sy-48:H-70,heroTop=heroBase,hero=null;
-  if(st.hero&&(st.hero.value||statOk(S,st.hero.key))){hero=heroText(C,st.hero.center?W/2:m,heroBase,cw,H*(H<1100?0.13:0.15)*(st.hero.scale||1),st.hero);heroTop=heroBase-hero.size*0.74;}
+  if(st.hero&&(st.hero.value||statOk(S,st.hero.key))){const hx=st.hero.center?W/2:m,hmax=H*(H<1100?0.13:0.15)*(st.hero.scale||1);
+    hero=heroText(C,hx,heroBase,cw,hmax,st.hero);
+    const hv=(st.hero.value||STATS[st.hero.key].val(S))[0],drop=/[,;]/.test(hv)?hero.size*0.22+14:0;
+    if(rows&&drop>48){heroBase=sy-drop;hero=heroText(C,hx,heroBase,cw,hmax,st.hero);}heroTop=heroBase-hero.size*0.74;}
   const gl=C.coll?[]:graphList(C),gh=gl.length?Math.min(gl.length*H*0.068+(gl.length-1)*18,H*0.24):0;
   const g1=hero?heroTop-40:(rows?sy-34:H-70),g0=g1-gh;
   if(gl.length)s+=graphs(C,{x:m,y:g0,w:cw,h:gh},st.graph);
@@ -1206,7 +1209,7 @@ const TEMPLATES={
       const bibNo=o.bibno.trim(),heroKey=bibNo?'bibno':statOk(S,'time')?'time':'dist';
       const[hv]=STATS[heroKey].val(S),hf={fam:'d',w:900,it:false,st:75};
       const items=statItems(S,o.stats.filter(k=>k!==heroKey));
-      const statH=items.length?bh*(items.length>4?0.27:0.19):0,avail=bh-tb-bb-statH-28,hs=fit(hv,hf,bw-120,avail*1.05),hy=by+tb+14+(avail+hs*0.72)/2;
+      const statH=items.length?bh*(items.length>4?0.27:0.19):0,avail=bh-tb-bb-statH-28,desc=/[,;]/.test(hv)?0.2:0.02,hs=fit(hv,hf,bw-120,avail*0.96/(0.72+desc)),hy=by+tb+14+(avail-hs*(0.72+desc))/2+hs*0.72;
       g+=`<text x="${cxb}" y="${r1(hy)}" text-anchor="middle" ${fa(hf,hs)} fill="${INK}" letter-spacing="-2">${esc(hv)}</text>`;
       if(items.length)g+=itemsRow({x:bx+52,y:by+bh-bb-statH-14,w:bw-104,h:statH},items,{label:'#6A6E99',value:INK,sep:'rgba(18,21,53,.15)',stretch:100});
       const fy=by+bh-bb/2+6;

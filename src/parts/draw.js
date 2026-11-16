@@ -184,7 +184,10 @@ function bottomBlock(C,st,items){
   items=items||statItems(S,o.stats.filter(k=>k!==(st.hero&&st.hero.key)));
   const rows=rowsFor(items.length),sh=rows*(H<1100?78:92),sy=H-60-sh;
   let heroBase=rows?sy-48:H-70,heroTop=heroBase,hero=null;
-  if(st.hero&&(st.hero.value||statOk(S,st.hero.key))){hero=heroText(C,st.hero.center?W/2:m,heroBase,cw,H*(H<1100?0.13:0.15)*(st.hero.scale||1),st.hero);heroTop=heroBase-hero.size*0.74;}
+  if(st.hero&&(st.hero.value||statOk(S,st.hero.key))){const hx=st.hero.center?W/2:m,hmax=H*(H<1100?0.13:0.15)*(st.hero.scale||1);
+    hero=heroText(C,hx,heroBase,cw,hmax,st.hero);
+    const hv=(st.hero.value||STATS[st.hero.key].val(S))[0],drop=/[,;]/.test(hv)?hero.size*0.22+14:0;
+    if(rows&&drop>48){heroBase=sy-drop;hero=heroText(C,hx,heroBase,cw,hmax,st.hero);}heroTop=heroBase-hero.size*0.74;}
   const gl=C.coll?[]:graphList(C),gh=gl.length?Math.min(gl.length*H*0.068+(gl.length-1)*18,H*0.24):0;
   const g1=hero?heroTop-40:(rows?sy-34:H-70),g0=g1-gh;
   if(gl.length)s+=graphs(C,{x:m,y:g0,w:cw,h:gh},st.graph);

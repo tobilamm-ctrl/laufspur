@@ -73,7 +73,7 @@ const TEMPLATES={
       const bibNo=o.bibno.trim(),heroKey=bibNo?'bibno':statOk(S,'time')?'time':'dist';
       const[hv]=STATS[heroKey].val(S),hf={fam:'d',w:900,it:false,st:75};
       const items=statItems(S,o.stats.filter(k=>k!==heroKey));
-      const statH=items.length?bh*(items.length>4?0.27:0.19):0,avail=bh-tb-bb-statH-28,hs=fit(hv,hf,bw-120,avail*1.05),hy=by+tb+14+(avail+hs*0.72)/2;
+      const statH=items.length?bh*(items.length>4?0.27:0.19):0,avail=bh-tb-bb-statH-28,desc=/[,;]/.test(hv)?0.2:0.02,hs=fit(hv,hf,bw-120,avail*0.96/(0.72+desc)),hy=by+tb+14+(avail-hs*(0.72+desc))/2+hs*0.72;
       g+=`<text x="${cxb}" y="${r1(hy)}" text-anchor="middle" ${fa(hf,hs)} fill="${INK}" letter-spacing="-2">${esc(hv)}</text>`;
       if(items.length)g+=itemsRow({x:bx+52,y:by+bh-bb-statH-14,w:bw-104,h:statH},items,{label:'#6A6E99',value:INK,sep:'rgba(18,21,53,.15)',stretch:100});
       const fy=by+bh-bb/2+6;
