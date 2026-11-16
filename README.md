@@ -7,13 +7,18 @@ Alles läuft im Browser; die GPX-Datei wird nirgends hochgeladen.
 
 ## Funktionen
 
-- **8 Vorlagen:** Tartan, Glut, Startnummer, Zielsprint, Stoppuhr, Riso, Medaille, Wellen
-- **Kennzahlen nach Wahl:** Distanz, Zeit, Pace, Höhenmeter, Datum, Startzeit, schnellster Kilometer, Tempo
-- **Elemente:** Pace-Farben, Tempo-Echo, Kilometermarken, Start & Ziel, Kartengrundlage
-- **Diagramme:** Höhenprofil, Pace-Kurve, Km-Splits
+- **8 Vorlagen:** Tartan, Glut, Startnummer, Zielsprint, Stoppuhr, Riso, Medaille, Wellen, jeweils mit zwei frei wählbaren Farben
+- **Jahresposter:** mehrere GPX-Dateien auf einmal laden, als Kacheln (jeder Lauf einzeln) oder als Heatmap (alle Läufe übereinander), mit Jahressummen
+- **Kennzahlen nach Wahl:** Distanz, Zeit, Pace, Höhenmeter, Datum, Startzeit, schnellster Kilometer, Tempo, Ø Puls, max. Puls, Platzierung, Startnummer
+- **Offizielles Ergebnis:** Platzierung, Startnummer und offizielle Zeit (ersetzt die Zeit der Uhr)
+- **Elemente:** Pace- oder Puls-Farben, Tempo-Echo, Kilometermarken, Start & Ziel, Kartengrundlage, Foto hinter der Strecke
+- **Diagramme:** Höhenprofil, Pace-Kurve, Puls-Kurve, Km-Splits
+- **Markierungen:** eigene Notizen per Klick auf die Strecke
+- **Ausrichtung:** Strecke frei oder automatisch drehen (mit Nordpfeil)
 - **Privatzone:** blendet Anfang und Ende der Strecke aus (die Kennzahlen bleiben vollständig)
-- **Formate:** DIN A (1:√2), 50 × 70 cm, Quadrat
-- **Export:** PNG bis A2 mit 300 dpi oder SVG (Schriften eingebettet, verlustfrei skalierbar)
+- **Formate:** DIN A (A4–A2), 50 × 70 cm, Quadrat, Story 9:16
+- **Export:** PNG mit 300 dpi, SVG (Schriften eingebettet) und Druck-PDF mit 3 mm Beschnitt
+- **Meine Vorlage:** Einstellungen als JSON-Datei speichern und wieder laden; der Browser merkt sich die letzten Einstellungen zusätzlich
 
 ## Kartengrundlage
 
@@ -21,14 +26,16 @@ Die Karte wird bei Bedarf live aus OpenStreetMap geladen (Overpass-API, `overpas
 Dabei wird nur der Kartenausschnitt übertragen, nicht die Strecke.
 Kartendaten © OpenStreetMap-Mitwirkende, ODbL; die Quellenangabe steht automatisch auf dem Poster.
 
+Das Druck-PDF lädt beim ersten Klick die Bibliothek jsPDF von cdnjs.
+
 ## Aufbau
 
 | Pfad | Inhalt |
 | --- | --- |
-| `src/laufspur.src.html` | Quellcode (HTML, CSS, JavaScript) |
+| `src/parts/` | Quellcode: `head.html` (CSS), `markup.html`, `core.js`, `draw.js`, `templates.js`, `app.js` |
 | `src/build.py` | baut `index.html`: bettet Schriften und Beispiellauf ein |
 | `fonts/` | Anybody, Chivo Mono, Hanken Grotesk (Lateinisch, woff2) |
-| `beispiel/beispiellauf.gpx` | erfundener 10-km-Rundkurs mit erfundenen Zeiten |
+| `beispiel/beispiellauf.gpx` | erfundener 10-km-Rundkurs mit erfundenen Zeiten und Pulswerten |
 | `index.html` | fertige, eigenständige Seite |
 
 Nach Änderungen in `src/` neu bauen:
