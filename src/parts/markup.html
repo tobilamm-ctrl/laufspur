@@ -14,12 +14,13 @@
       <div class="drop">
         <label class="btn btn-primary btn-small" for="gpx"><span>GPX-Dateien wählen</span></label>
         <input type="file" id="gpx" multiple accept=".gpx,application/gpx+xml,application/xml,text/xml">
-        <span class="hint">Eine Datei ergibt ein Lauf-Poster, mehrere Dateien ein Jahresposter. Du kannst die Dateien auch auf das Poster ziehen.</span>
+        <span class="hint">Jede Datei kommt in deine Lauf-Liste. Ab zwei Läufen gibt es das Jahresposter. Du kannst die Dateien auch auf das Poster ziehen.</span>
         <div class="file-line" id="fileline"></div>
       </div>
       <div class="field" id="runpickwrap" hidden>
-        <label for="runpick">Anzeigen</label>
+        <label for="runpick">Anzeigen · neue Dateien kommen zur Liste dazu</label>
         <select id="runpick" class="select"></select>
+        <button type="button" class="linkbtn" id="rundel" hidden>Diesen Lauf aus der Liste entfernen</button>
       </div>
       <div class="field">
         <label for="privacy">Privatzone</label>

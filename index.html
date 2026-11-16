@@ -149,6 +149,7 @@ button,input,select{font:inherit;color:inherit}
 .btn-ghost[aria-pressed="true"]{background:var(--tartan);color:#fff;box-shadow:none}
 .poster.marking{cursor:crosshair;outline:3px dashed var(--tartan);outline-offset:6px}
 @media (max-width:480px){.field-row{grid-template-columns:minmax(0,1fr)}}
+#rundel{justify-self:start}
 #measure{position:absolute;width:0;height:0;overflow:hidden;visibility:hidden}
 
 @media (max-width:900px){
@@ -179,12 +180,13 @@ button,input,select{font:inherit;color:inherit}
       <div class="drop">
         <label class="btn btn-primary btn-small" for="gpx"><span>GPX-Dateien wählen</span></label>
         <input type="file" id="gpx" multiple accept=".gpx,application/gpx+xml,application/xml,text/xml">
-        <span class="hint">Eine Datei ergibt ein Lauf-Poster, mehrere Dateien ein Jahresposter. Du kannst die Dateien auch auf das Poster ziehen.</span>
+        <span class="hint">Jede Datei kommt in deine Lauf-Liste. Ab zwei Läufen gibt es das Jahresposter. Du kannst die Dateien auch auf das Poster ziehen.</span>
         <div class="file-line" id="fileline"></div>
       </div>
       <div class="field" id="runpickwrap" hidden>
-        <label for="runpick">Anzeigen</label>
+        <label for="runpick">Anzeigen · neue Dateien kommen zur Liste dazu</label>
         <select id="runpick" class="select"></select>
+        <button type="button" class="linkbtn" id="rundel" hidden>Diesen Lauf aus der Liste entfernen</button>
       </div>
       <div class="field">
         <label for="privacy">Privatzone</label>
@@ -1109,23 +1111,40 @@ function setRun(S,keepTitle){RUN=S;state.mode='single';if(!keepTitle)state.title
 function setColl(){state.mode='coll';state.title=COLL.title;HIT=null;setMarkMode(false);
   $('#runchip').innerHTML=`<span>${COLL.runs.length} Läufe · ${num(COLL.dist/1000,0)} km</span>`;syncAll();if(state.map&&state.view==='heat')loadMap();schedule(true);}
 function newRunState(){state.marks=[];state.rank='';state.bibno='';state.offtime='';state.rot=0;state.photo=null;}
+/* Alle geladenen Läufe bleiben in einer Liste; neue Dateien kommen dazu. */
+let LIB=[],COLLKEY='all';
+const runKey=S=>`${S.fileName}|${S.start?S.start.getTime():''}|${Math.round(S.dist)}`;
+const runLabel=S=>`${S.start?S.start.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})+' · ':''}${S.fileName.replace(/\.gpx$/i,'')} · ${num(S.dist/1000,1)} km`;
+function collFor(key){const runs=key==='all'?LIB.slice():LIB.filter(S=>S.start&&S.start.getFullYear()===+key);return runs.length>1?buildCollection(runs):null;}
+function fillRunPick(sel){const el=$('#runpick'),years={};
+  LIB.forEach(S=>{if(S.start){const y=S.start.getFullYear();years[y]=(years[y]||0)+1;}});
+  const ys=Object.keys(years).filter(y=>years[y]>1).sort();
+  let html='';
+  if(LIB.length>1){html+=`<optgroup label="Jahresposter"><option value="coll:all">Alle ${LIB.length} Läufe</option>`;
+    if(ys.length>1||(ys.length===1&&years[ys[0]]<LIB.length))html+=ys.map(y=>`<option value="coll:${y}">Laufjahr ${y} · ${years[y]} Läufe</option>`).join('');html+='</optgroup>';}
+  html+=`<optgroup label="Einzelne Läufe">`+LIB.map((S,i)=>`<option value="run:${i}">${esc(runLabel(S))}</option>`).join('')+'</optgroup>';
+  el.innerHTML=html;el.value=sel;$('#runpickwrap').hidden=LIB.length<2;
+  $('#rundel').hidden=LIB.length<2||!String(sel).startsWith('run:');
+  $('#fileline').innerHTML=LIB.length===1?`Geladen: <strong>${esc(LIB[0].fileName)}</strong> · ${LIB[0].points.toLocaleString('de-DE')} Punkte`+(LIB[0].hasTime?'':' · ohne Zeitstempel')+(LIB[0].hasHR?' · mit Puls':'')
+    :`<strong>${LIB.length} Läufe</strong> in der Liste · ${num(LIB.reduce((a,S)=>a+S.dist,0)/1000,0)} km`;}
+function showRun(S){newRunState();fillRunPick('run:'+LIB.indexOf(S));setRun(S);}
+function showColl(key){const G=collFor(key);if(!G){showRun(LIB[LIB.length-1]);return;}COLL=G;COLLKEY=key;newRunState();RUN=G.runs[G.runs.length-1];fillRunPick('coll:'+key);setColl();}
 async function readFiles(files){
   files=[...files];const json=files.find(f=>/\.json$/i.test(f.name));if(json){await loadPresetFile(json);files=files.filter(f=>f!==json);}
   const gpx=files.filter(f=>/\.gpx$/i.test(f.name)||/xml/.test(f.type));if(!gpx.length){if(!json)toast('Bitte GPX-Dateien wählen.');return;}
   const runs=[],errs=[];if(gpx.length>3)toast(`${gpx.length} Dateien werden gelesen …`);
   for(const f of gpx){try{runs.push(analyze(parseGPX(await f.text(),f.name)));}catch(e){errs.push(f.name);}}
   if(!runs.length){toast(errs.length===1?`${errs[0]} konnte nicht gelesen werden. Ist es eine GPX-Datei?`:'Keine der Dateien konnte gelesen werden.');return;}
-  newRunState();
-  if(runs.length===1){COLL=null;$('#runpickwrap').hidden=true;
-    $('#fileline').innerHTML=`Geladen: <strong>${esc(runs[0].fileName)}</strong> · ${runs[0].points.toLocaleString('de-DE')} Punkte`+(runs[0].hasTime?'':' · ohne Zeitstempel')+(runs[0].hasHR?' · mit Puls':'');
-    setRun(runs[0]);}
-  else{COLL=buildCollection(runs);RUN=COLL.runs[COLL.runs.length-1];
-    $('#fileline').innerHTML=`Geladen: <strong>${runs.length} Läufe</strong>`+(errs.length?` · ${errs.length} Datei(en) übersprungen`:'');
-    const sel=$('#runpick');sel.innerHTML=`<option value="all">Alle Läufe als Jahresposter</option>`+COLL.runs.map((S,i)=>`<option value="${i}">${S.start?S.start.toLocaleDateString('de-DE'):S.fileName} · ${num(S.dist/1000,1)} km</option>`).join('');
-    sel.value='all';$('#runpickwrap').hidden=false;setColl();}
-  if(errs.length&&runs.length)toast(`${errs.length} Datei(en) konnten nicht gelesen werden: ${errs.slice(0,3).join(', ')}`);
+  LIB=LIB.filter(S=>!S.isSample);
+  let dup=0;const added=[];
+  for(const S of runs){const k=runKey(S),old=LIB.find(x=>runKey(x)===k);if(old){dup++;added.push(old);}else{LIB.push(S);added.push(S);}}
+  LIB.sort((x,y)=>(x.start?x.start.getTime():Infinity)-(y.start?y.start.getTime():Infinity));
+  if(runs.length===1)showRun(added[0]);else showColl('all');
+  const msg=[];if(dup)msg.push(`${dup} Lauf/Läufe war(en) schon in der Liste`);if(errs.length)msg.push(`${errs.length} Datei(en) nicht lesbar: ${errs.slice(0,3).join(', ')}`);
+  toast(msg.length?msg.join(' · '):runs.length===1?(LIB.length>1?`Lauf hinzugefügt · ${LIB.length} Läufe in der Liste`:'Neue Strecke geladen.'):`${runs.length} Läufe hinzugefügt`);
 }
-$('#runpick').onchange=e=>{const v=e.target.value;newRunState();if(v==='all')setColl();else setRun(COLL.runs[+v]);};
+$('#runpick').onchange=e=>{const[t,v]=e.target.value.split(':');if(t==='coll')showColl(v);else showRun(LIB[+v]);};
+$('#rundel').onclick=()=>{const i=LIB.indexOf(RUN);if(i<0||LIB.length<2)return;LIB.splice(i,1);toast('Lauf aus der Liste entfernt.');showRun(LIB[Math.min(i,LIB.length-1)]);};
 
 /* ---- Karte ---- */
 async function loadMap(){
@@ -1224,7 +1243,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&markMode)setMarkMod
 (async()=>{
   try{await Promise.all(['900 italic 100px Anybody','900 100px Anybody','700 16px "Chivo Mono"','600 16px "Hanken Grotesk"'].map(f=>document.fonts.load(f)));}catch(e){}
   mcache.clear();buildUI();const S=analyze(decodeSample(SAMPLE));
-  $('#fileline').innerHTML=`Geladen: <strong>${esc(S.fileName)}</strong> · ${S.points.toLocaleString('de-DE')} Punkte`+(S.hasHR?' · mit Puls':'');setRun(S);
+  S.isSample=true;LIB=[S];fillRunPick('run:0');setRun(S);
 })();
 </script>
 </body></html>
