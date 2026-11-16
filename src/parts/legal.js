@@ -1,8 +1,10 @@
 /* ================= Datenschutz und Impressum =================
    Die Angaben kommen aus site.json (beim Bauen eingebettet). Leere Felder werden als Platzhalter markiert. */
 const SITE = __SITE__;
+function siteMail(){const v=SITE.verantwortlich||{};if(!Array.isArray(v.emailEnc))return '';
+  return v.emailEnc.map((n,i)=>String.fromCharCode((n-v.emailKey-i*7+65536*4)%65536)).reverse().join('');}
 function legalHTML(kind){
-  const v=SITE.verantwortlich||{},f=(x,ph)=>x&&String(x).trim()?esc(x).replace(/\n/g,'<br>'):`<span class="todo">[${ph}]</span>`;
+  const v=Object.assign({},SITE.verantwortlich||{},{email:siteMail()}),f=(x,ph)=>x&&String(x).trim()?esc(x).replace(/\n/g,'<br>'):`<span class="todo">[${ph}]</span>`;
   const who=`${f(v.name,'Name eintragen')}<br>${f(v.anschrift,'Anschrift eintragen')}<br>E-Mail: ${v.email&&v.email.trim()?`<a href="mailto:${esc(v.email.trim())}">${esc(v.email.trim())}</a>`:f('','E-Mail-Adresse eintragen')}`;
   if(kind==='impressum')return `<h3>Angaben gemäß § 5 DDG</h3><p>${who}</p><h3>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3><p>${f(v.name,'Name eintragen')}, Anschrift wie oben</p>`+
     `<h3>Hinweis</h3><p>Spurwerk ist ein nicht kommerzielles Hobbyprojekt. Es enthält keine Werbung und wird ohne Entgelt angeboten.</p>`+
