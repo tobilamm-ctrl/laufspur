@@ -43,12 +43,21 @@ button,input,select{font:inherit;color:inherit}
 .run span{display:inline-block;transform:skewX(12deg)}
 
 /* ---------- Werkbank ---------- */
-.studio{max-width:1500px;margin:-6px auto 0;display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:22px;
+.studio{max-width:1500px;margin:-6px auto 0;display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:22px;align-items:start;
   padding-block:0 32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .controls{background:var(--panel);border:1px solid var(--line);border-radius:14px;align-self:start;min-width:0}
-.sec{padding:18px 20px;border-bottom:1px solid var(--line);display:grid;gap:12px}
+.sec{border-bottom:1px solid var(--line)}
 .sec:last-child{border-bottom:0}
-.sec h2{margin:0;display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-style:italic;
+.sec > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:15px 20px;flex-wrap:wrap}
+.sec > summary::-webkit-details-marker{display:none}
+.sec > summary::after{content:"";margin-left:auto;width:9px;height:9px;border-right:2.5px solid var(--muted);border-bottom:2.5px solid var(--muted);
+  transform:rotate(45deg) translate(-2px,-2px);transition:transform .2s ease}
+.sec[open] > summary::after{transform:rotate(-135deg) translate(-2px,-2px)}
+.sec > summary:hover h2{color:var(--tartan)}
+.sum{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;min-width:0;overflow-wrap:anywhere}
+.sec[open] .sum{display:none}
+.sec-body{display:grid;gap:12px;padding:0 20px 18px}
+.sec h2{margin:0;transition:color .15s ease;display:flex;align-items:center;gap:10px;font-family:var(--f-display);font-weight:800;font-style:italic;
   font-stretch:125%;font-size:20px;line-height:1.1;text-wrap:balance}
 .lane-no{display:inline-block;font-family:var(--f-mono);font-style:normal;font-stretch:100%;font-weight:700;font-size:11px;
   letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--tartan);padding:4px 10px;transform:skewX(-14deg)}
@@ -105,7 +114,7 @@ button,input,select{font:inherit;color:inherit}
 .range-val{font-family:var(--f-mono);font-weight:700;font-size:14px;min-width:64px;text-align:right;font-variant-numeric:tabular-nums}
 
 /* ---------- Bühne ---------- */
-.stage{position:relative;min-width:0;background:var(--stage);border-radius:14px;padding:18px clamp(14px,3vw,40px) 26px;
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);min-width:0;background:var(--stage);border-radius:14px;padding:18px clamp(14px,3vw,40px) 26px;
   background-image:repeating-linear-gradient(0deg,transparent 0 70px,var(--lane) 70px 73px);display:grid;gap:16px;align-content:start}
 .stage.drag{outline:3px dashed var(--tartan);outline-offset:-10px}
 .toolbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:space-between}
@@ -113,7 +122,7 @@ button,input,select{font:inherit;color:inherit}
 .now b{color:var(--ink)}
 .export{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .export select{background:var(--panel);border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;font-size:13.5px}
-.poster{--ratio:1.414;width:min(100%,calc((100vh - 210px) / var(--ratio)));min-width:min(100%,300px);margin-inline:auto;box-shadow:var(--shadow);line-height:0}
+.poster{--ratio:1.414;width:min(100%,calc((100vh - 190px) / var(--ratio)));min-width:min(100%,300px);margin-inline:auto;box-shadow:var(--shadow);line-height:0}
 .poster svg{display:block;width:100%;height:auto}
 .poster.swap{animation:swap .5s cubic-bezier(.2,.85,.25,1)}
 @keyframes swap{from{transform:translateX(-22px) skewX(5deg);opacity:.35}to{transform:none;opacity:1}}
@@ -128,13 +137,13 @@ button,input,select{font:inherit;color:inherit}
 
 @media (max-width:900px){
   .studio{grid-template-columns:minmax(0,1fr)}
-  .stage{order:-1}
+  .stage{order:-1;position:relative;top:auto}
   .poster{width:min(100%,calc((100vh - 120px) / var(--ratio)))}
   .run{margin-left:0}
 }
 @media (prefers-reduced-motion:reduce){
   .poster.swap{animation:none}
-  .btn,.tpl,.chip span{transition:none}
+  .btn,.tpl,.chip span,.sec > summary::after{transition:none}
 }
 </style>
 
@@ -148,8 +157,9 @@ button,input,select{font:inherit;color:inherit}
 
 <main class="studio">
   <aside class="controls" aria-label="Poster einstellen">
-    <section class="sec">
-      <h2><span class="lane-no"><b>Bahn 1</b></span>Strecke</h2>
+    <details class="sec" id="sec-strecke">
+      <summary><h2><span class="lane-no"><b>Bahn 1</b></span>Strecke</h2><span class="sum" id="sum-strecke"></span></summary>
+      <div class="sec-body">
       <div class="drop">
         <label class="btn btn-primary btn-small" for="gpx"><span>GPX-Datei wählen</span></label>
         <input type="file" id="gpx" accept=".gpx,application/gpx+xml,application/xml,text/xml">
@@ -161,38 +171,49 @@ button,input,select{font:inherit;color:inherit}
         <div class="range-row"><input type="range" id="privacy" min="0" max="600" step="50" value="200"><span class="range-val" id="privacyval">200 m</span></div>
         <p class="hint">Blendet Anfang und Ende der Strecke aus, damit deine Haustür nicht auf dem Poster steht. Die Kennzahlen bleiben vollständig.</p>
       </div>
-    </section>
+      </div>
+    </details>
 
-    <section class="sec">
-      <h2><span class="lane-no"><b>Bahn 2</b></span>Vorlage</h2>
+    <details class="sec" id="sec-vorlage">
+      <summary><h2><span class="lane-no"><b>Bahn 2</b></span>Vorlage</h2><span class="sum" id="sum-vorlage"></span></summary>
+      <div class="sec-body">
       <div class="tpl-grid" id="tplgrid"></div>
-    </section>
+      </div>
+    </details>
 
-    <section class="sec">
-      <h2><span class="lane-no"><b>Bahn 3</b></span>Text</h2>
+    <details class="sec" id="sec-text">
+      <summary><h2><span class="lane-no"><b>Bahn 3</b></span>Text</h2><span class="sum" id="sum-text"></span></summary>
+      <div class="sec-body">
       <div class="field"><label for="title">Titel</label><input type="text" id="title" maxlength="40"></div>
       <div class="field"><label for="sub">Untertitel</label><input type="text" id="sub" maxlength="60" placeholder="z. B. Ort oder Veranstaltung"></div>
       <div class="field"><label for="name">Name</label><input type="text" id="name" maxlength="40" placeholder="z. B. dein Name"></div>
-    </section>
+      </div>
+    </details>
 
-    <section class="sec">
-      <h2><span class="lane-no"><b>Bahn 4</b></span>Kennzahlen</h2>
+    <details class="sec" id="sec-zahlen">
+      <summary><h2><span class="lane-no"><b>Bahn 4</b></span>Kennzahlen</h2><span class="sum" id="sum-zahlen"></span></summary>
+      <div class="sec-body">
       <div class="chips" id="statchips"></div>
-    </section>
+      </div>
+    </details>
 
-    <section class="sec">
-      <h2><span class="lane-no"><b>Bahn 5</b></span>Elemente</h2>
+    <details class="sec" id="sec-elemente">
+      <summary><h2><span class="lane-no"><b>Bahn 5</b></span>Elemente</h2><span class="sum" id="sum-elemente"></span></summary>
+      <div class="sec-body">
       <span class="sub-h">Strecke</span>
       <div class="chips" id="elchips"></div>
       <p class="hint mapstatus" id="mapstatus" hidden></p>
       <span class="sub-h">Diagramme</span>
       <div class="chips" id="graphchips"></div>
-    </section>
+      </div>
+    </details>
 
-    <section class="sec">
-      <h2><span class="lane-no"><b>Bahn 6</b></span>Format</h2>
+    <details class="sec" id="sec-format">
+      <summary><h2><span class="lane-no"><b>Bahn 6</b></span>Format</h2><span class="sum" id="sum-format"></span></summary>
+      <div class="sec-body">
       <div class="chips" id="fmtchips" role="radiogroup" aria-label="Format"></div>
-    </section>
+      </div>
+    </details>
   </aside>
 
   <section class="stage" id="stage" aria-label="Vorschau">
@@ -781,6 +802,17 @@ function draw(){
   if(swap){P.classList.remove('swap');void P.offsetWidth;P.classList.add('swap');swap=false;}
   for(const k in TEMPLATES){const el=document.getElementById('th-'+k);if(el)el.innerHTML=renderSVG(k,'t'+k);}
   $('#now').innerHTML=`Vorlage <b>${TEMPLATES[state.tpl].name}</b> · ${FORMATS[state.fmt].label}`;
+  summaries();
+}
+function summaries(){
+  const set=(k,t)=>{const el=document.getElementById('sum-'+k);if(el)el.textContent=t;};
+  const S=RUN,el=[state.pace&&'Pace-Farben',state.echo&&!TEMPLATES[state.tpl].noEcho&&'Echo',state.km&&'Km',state.map&&'Karte'].filter(Boolean).length+state.graphs.length;
+  set('strecke',`${num(S.dist/1000,1)} km · Privatzone ${state.privacy?state.privacy+' m':'aus'}`);
+  set('vorlage',TEMPLATES[state.tpl].name);
+  set('text',state.title||'ohne Titel');
+  set('zahlen',`${state.stats.filter(k=>statOk(S,k)).length} gewählt`);
+  set('elemente',`${el} aktiv`);
+  set('format',FORMATS[state.fmt].label);
 }
 function buildUI(){
   const g=$('#tplgrid');g.innerHTML='';
