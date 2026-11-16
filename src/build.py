@@ -36,9 +36,11 @@ def sample(path):
 
 fonts = {k: base64.b64encode((ROOT / 'fonts' / f'{k}.woff2').read_bytes()).decode() for k in ['anyN', 'anyI', 'chivo', 'hanken']}
 read = lambda n: (PARTS / n).read_text(encoding='utf-8')
-script = '\n'.join(read(n) for n in ['core.js', 'sports.js', 'draw.js', 'templates.js', 'app.js'])
-body = read('head.html') + '\n' + read('markup.html') + '\n<script>\n' + script + '</script>\n'
-body = body.replace('__FONTS__', json.dumps(fonts)).replace('__SAMPLE__', json.dumps(sample(gpx), separators=(',', ':')))
+script = '\n'.join(read(n) for n in ['core.js', 'sports.js', 'draw.js', 'templates.js', 'app.js', 'legal.js'])
+site = json.loads((ROOT / 'site.json').read_text(encoding='utf-8'))
+jspdf = (ROOT / 'vendor' / 'jspdf.umd.min.js').read_text(encoding='utf-8')
+body = read('head.html') + '\n' + read('markup.html') + '\n<script>\n' + jspdf + '\n</script>\n<script>\n' + script + '</script>\n'
+body = body.replace('__FONTS__', json.dumps(fonts)).replace('__SAMPLE__', json.dumps(sample(gpx), separators=(',', ':'))).replace('__SITE__', json.dumps(site, ensure_ascii=False))
 if '--fragment' in sys.argv:
     out.write_text(body, encoding='utf-8')
 else:

@@ -1,0 +1,10 @@
+{
+  "_hinweis": "Vor dem Veröffentlichen ausfüllen und danach 'python3 src/build.py' ausführen. Leere Felder erscheinen im Tool als markierte Platzhalter.",
+  "verantwortlich": {
+    "name": "",
+    "anschrift": "",
+    "email": ""
+  },
+  "hoster": "",
+  "impressum": false
+}

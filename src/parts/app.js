@@ -287,10 +287,8 @@ $('#pngbtn').onclick=()=>busy($('#pngbtn'),async()=>{toast('PNG wird berechnet �
   try{const sz=sizeList(state.fmt)[state.size],w=sz.px||Math.round(sz.mm[0]/25.4*300),h=Math.round(w*FORMATS[state.fmt].h/1000);
     const cv=await rasterize(renderSVG(state.tpl,'x',{}),w,h),blob=await new Promise(r=>cv.toBlob(r,'image/png'));if(!blob)throw 0;await saveFile(baseName()+'.png',blob);}
   catch(e){toast('Das PNG konnte nicht erzeugt werden. Versuche eine kleinere Größe.');}});
-let jspdfP=null;
-function loadJsPDF(){if(window.jspdf)return Promise.resolve(window.jspdf);
-  if(!jspdfP)jspdfP=new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    s.onload=()=>res(window.jspdf);s.onerror=()=>{jspdfP=null;rej(new Error('jspdf'));};document.head.appendChild(s);});return jspdfP;}
+/* jsPDF ist in die Seite eingebaut (vendor/jspdf.umd.min.js, MIT-Lizenz) */
+function loadJsPDF(){return window.jspdf?Promise.resolve(window.jspdf):Promise.reject(new Error('jspdf'));}
 $('#pdfbtn').onclick=()=>busy($('#pdfbtn'),async()=>{const sz=sizeList(state.fmt)[state.size];if(!sz.mm)return;toast('Druck-PDF wird berechnet …');
   try{const lib=await loadJsPDF(),B=3,mw=sz.mm[0]+2*B,mh=sz.mm[1]+2*B,bleed=B/sz.mm[0]*1000;
     const w=Math.round(mw/25.4*300),h=Math.round(mh/25.4*300),cv=await rasterize(renderSVG(state.tpl,'x',{bleed}),w,h);
@@ -298,7 +296,7 @@ $('#pdfbtn').onclick=()=>busy($('#pdfbtn'),async()=>{const sz=sizeList(state.fmt
     doc.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,mw,mh);
     doc.setProperties({title:`Spurwerk · ${state.title}`,subject:`Endformat ${sz.mm[0]} × ${sz.mm[1]} mm, 3 mm Beschnitt rundum`});
     await saveFile(`${baseName()}-${sz.mm[0]}x${sz.mm[1]}mm-beschnitt.pdf`,doc.output('blob'));}
-  catch(e){toast(e&&e.message==='jspdf'?'Die PDF-Bibliothek konnte nicht geladen werden. Ist das Gerät online?':'Das PDF konnte nicht erzeugt werden. Versuche eine kleinere Größe.');}});
+  catch(e){toast(e&&e.message==='jspdf'?'Die PDF-Bibliothek fehlt in dieser Version der Seite.':'Das PDF konnte nicht erzeugt werden. Versuche eine kleinere Größe.');}});
 $('#size').onchange=e=>{state.size=+e.target.value;fillSizes();schedule();};
 
 let tt;function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3600);}

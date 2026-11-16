@@ -140,9 +140,15 @@
       </div>
     </div>
     <div class="poster" id="poster"></div>
-    <p class="foot" id="foot">Die GPX-Dateien bleiben in deinem Browser. SVG ist verlustfrei skalierbar, das PDF ist für die Druckerei gedacht.</p>
+    <p class="foot" id="foot">Die GPX-Dateien bleiben in deinem Browser. SVG ist verlustfrei skalierbar, das PDF ist für die Druckerei gedacht.
+      <span class="foot-links"><a href="#datenschutz" id="dslink">Datenschutz</a><a href="#impressum" id="imlink" hidden>Impressum</a></span></p>
   </section>
 </main>
 
 <svg id="measure" aria-hidden="true"><text x="0" y="50"></text></svg>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<dialog class="legal" id="legal" aria-labelledby="legal-title">
+  <div class="legal-head"><h2 id="legal-title">Datenschutz</h2><button type="button" class="linkbtn" id="legalclose">Schließen</button></div>
+  <div class="legal-body" id="legalbody"></div>
+</dialog>

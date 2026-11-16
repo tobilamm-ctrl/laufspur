@@ -23,13 +23,23 @@ Alles läuft im Browser; die GPX-Datei wird nirgends hochgeladen.
 - **Export:** PNG mit 300 dpi, SVG (Schriften eingebettet) und Druck-PDF mit 3 mm Beschnitt
 - **Meine Vorlage:** Einstellungen als JSON-Datei speichern und wieder laden; der Browser merkt sich die letzten Einstellungen zusätzlich
 
+## Auf eigenem Webspace veröffentlichen
+
+Spurwerk ist eine einzige Datei (`index.html`) ohne Server-Teil. So geht es:
+
+1. In `site.json` Name, Anschrift, E-Mail und den Namen deines Hosters eintragen. Mit `"impressum": true` erscheint zusätzlich ein Impressum-Link.
+2. `python3 src/build.py` ausführen.
+3. Nur `index.html` auf den Webspace hochladen (z. B. in einen Ordner `spurwerk/`).
+
+Die Datenschutzhinweise öffnen sich über den Link im Fuß der Seite oder direkt mit `…/index.html#datenschutz`. Leere Felder aus `site.json` erscheinen dort gelb markiert als Platzhalter. Der Text ist eine Vorlage und keine Rechtsberatung; prüfe ihn vor dem Veröffentlichen, besonders den Abschnitt zum Hoster.
+
+Außer der Overpass-Abfrage für die Karte (nur nach dem Einschalten) baut die Seite keine Verbindungen zu anderen Servern auf: Schriften und PDF-Bibliothek sind eingebettet.
+
 ## Kartengrundlage
 
 Die Karte wird bei Bedarf live aus OpenStreetMap geladen (Overpass-API, `overpass-api.de`).
 Dabei wird nur der Kartenausschnitt übertragen, nicht die Strecke.
 Kartendaten © OpenStreetMap-Mitwirkende, ODbL; die Quellenangabe steht automatisch auf dem Poster.
-
-Das Druck-PDF lädt beim ersten Klick die Bibliothek jsPDF von cdnjs.
 
 ## Aufbau
 
@@ -39,6 +49,8 @@ Das Druck-PDF lädt beim ersten Klick die Bibliothek jsPDF von cdnjs.
 | `src/build.py` | baut `index.html`: bettet Schriften und Beispiellauf ein |
 | `fonts/` | Anybody, Chivo Mono, Hanken Grotesk (Lateinisch, woff2) |
 | `beispiel/beispiellauf.gpx` | erfundener 10-km-Rundkurs mit erfundenen Zeiten und Pulswerten |
+| `site.json` | Angaben für Datenschutz und Impressum |
+| `vendor/` | jsPDF 2.5.1 (MIT-Lizenz) für das Druck-PDF |
 | `index.html` | fertige, eigenständige Seite |
 
 Nach Änderungen in `src/` neu bauen:
@@ -51,4 +63,4 @@ Mit einer anderen GPX-Datei als Beispiel: `python3 src/build.py meinlauf.gpx ind
 
 ## Lizenzen
 
-Die Schriften Anybody, Chivo Mono und Hanken Grotesk stehen unter der SIL Open Font License 1.1 (Google Fonts).
+Die Schriften Anybody, Chivo Mono und Hanken Grotesk stehen unter der SIL Open Font License 1.1 (Google Fonts). jsPDF steht unter der MIT-Lizenz (`vendor/LICENSE-jspdf.txt`).
