@@ -81,7 +81,7 @@ const TEMPLATES={
       g+=`<text x="${bx+bw-56}" y="${r1(fy)}" text-anchor="end" ${fa({fam:'b',w:600},18)} fill="${lt(P.fg,.75)}">${esc(o.sub||'')}</text>`;
       return s+`<g transform="rotate(-2.2 ${r1(cxb)} ${r1(cyb)})">${g}</g>`;}},
 
-  sprint:{name:'Zielsprint',blurb:'Sonnenverlauf mit Km-Splits als Balken',pal:{bg:'#FF6A4A',fg:'#1B0E33'},fgLabel:'Schrift & Strecke',
+  sprint:{name:'Zielsprint',blurb:'Sonnenverlauf mit Abschnitten als Balken',pal:{bg:'#FF6A4A',fg:'#1B0E33'},fgLabel:'Schrift & Strecke',
     defaults:{echo:true,color:'none',graphs:['splits']},
     look(C,P){const{W,H,id}=C;
       let back=`<defs><linearGradient id="${id}-bg" x1="0" y1="0" x2=".55" y2="1"><stop offset="0" stop-color="${mix(P.bg,'#FFD23F',.78)}"/><stop offset=".42" stop-color="${P.bg}"/><stop offset=".72" stop-color="${mix(P.bg,'#C81C78',.62)}"/><stop offset="1" stop-color="${mix(P.bg,'#5A1AB0',.86)}"/></linearGradient></defs>
@@ -115,11 +115,11 @@ const TEMPLATES={
       for(let k=1;k<=3;k++)s+=`<circle cx="${cx}" cy="${r1(cy)}" r="${r1(r+70+k*44)}" fill="none" stroke="#fff" stroke-opacity="${r1(.24-k*.06)}" stroke-width="2.5"/>`;
       s+=`<rect x="${cx-11}" y="${r1(cy-r-30)}" width="22" height="32" fill="${INK}"/><rect x="${cx-30}" y="${r1(cy-r-52)}" width="60" height="26" rx="6" fill="${INK}"/>`;
       [-1,1].forEach(sg=>{s+=`<g transform="rotate(${sg*42} ${cx} ${r1(cy)})"><rect x="${cx-9}" y="${r1(cy-r-24)}" width="18" height="28" rx="3" fill="${INK}"/></g>`;});
-      const sp=S.splits,n=sp.length;
-      if(n){const v=sp.map(t=>1000/t),vmin=Math.min(...v),vmax=Math.max(...v),sw=Math.min(18,2*Math.PI*r/n*0.55);
-        sp.forEach((t,i)=>{const a=-Math.PI/2+(i+0.5)/n*2*Math.PI,Ln=16+44*(v[i]-vmin)/((vmax-vmin)||1),isB=i+1===S.bestKm;
+      const G=seg(S),sp=G.times,n=sp.length,every=n>12?5:1;
+      if(n){const v=sp.map(t=>G.len/t),vmin=Math.min(...v),vmax=Math.max(...v),sw=Math.min(18,2*Math.PI*r/n*0.55);
+        sp.forEach((t,i)=>{const a=-Math.PI/2+(i+0.5)/n*2*Math.PI,Ln=16+44*(v[i]-vmin)/((vmax-vmin)||1),isB=i+1===G.bestK;
           s+=`<line x1="${r1(cx+Math.cos(a)*(r+12))}" y1="${r1(cy+Math.sin(a)*(r+12))}" x2="${r1(cx+Math.cos(a)*(r+12+Ln))}" y2="${r1(cy+Math.sin(a)*(r+12+Ln))}" stroke="${isB?'#fff':ORANGE}" stroke-width="${r1(sw)}"/>`;
-          if((i+1)%5===0||isB)s+=`<text x="${r1(cx+Math.cos(a)*(r+30+Ln))}" y="${r1(cy+Math.sin(a)*(r+30+Ln)+5)}" text-anchor="middle" ${fa(MONO,isB?14:13)} fill="${INK}">${isB?pace(t):i+1}</text>`;});}
+          if((i+1)%every===0||isB)s+=`<text x="${r1(cx+Math.cos(a)*(r+30+Ln))}" y="${r1(cy+Math.sin(a)*(r+30+Ln)+5)}" text-anchor="middle" ${fa(MONO,isB?14:13)} fill="${INK}">${isB?fmtV(S,G.len/t)[0]:(i+1)*G.len/1000}</text>`;});}
       s+=`<circle cx="${cx}" cy="${r1(cy)}" r="${r1(r+6)}" fill="${INK}"/><circle cx="${cx}" cy="${r1(cy)}" r="${r1(r)}" fill="url(#${id}-face)"/>`;
       for(let k=0;k<60;k++){const a=k/60*2*Math.PI,big=k%5===0,r0=r-8,r2=r-(big?26:15);
         s+=`<line x1="${r1(cx+Math.sin(a)*r0)}" y1="${r1(cy-Math.cos(a)*r0)}" x2="${r1(cx+Math.sin(a)*r2)}" y2="${r1(cy-Math.cos(a)*r2)}" stroke="${MINT}" stroke-opacity="${big?.9:.45}" stroke-width="${big?4:2}"/>`;}
@@ -198,17 +198,17 @@ const TEMPLATES={
       const gl=graphList(C),gh=gl.length?Math.min(gl.length*H*0.06+(gl.length-1)*18,H*0.2):0;
       const yEnd=H-64-gh-(gl.length?36:0),y0=top.y+44,pw=cw*0.6,px=m+26,colX=m+cw*0.66,colW=W-m-colX;
       const ci=colorInfo(C),useT=S.hasTime,val=i=>useT?S.speed[i]:S.eleS[i],lo=useT?S.lo:S.eleMin,hi=useT?S.hi:Math.max(S.eleMax,S.eleMin+20);
-      const rows=[];for(let k=0;k*1000<S.dist-250;k++)rows.push([k*1000,Math.min(S.dist,(k+1)*1000)]);
+      const L1=seg(S).len,rows=[];for(let k=0;k*L1<S.dist-L1/4;k++)rows.push([k*L1,Math.min(S.dist,(k+1)*L1)]);
       const n=rows.length,head=30,ph=yEnd-y0-head-24,amp=ph/(n+2.2)*3.2,sp=(ph-amp)/Math.max(1,n-1);
-      s+=`<text x="${m}" y="${r1(y0+12)}" ${fa(MONO,13)} letter-spacing="2.5" fill="${LIGHT}">${useT?'TEMPO JE KILOMETER':'HÖHE JE KILOMETER'}</text>`;
+      s+=`<text x="${m}" y="${r1(y0+12)}" ${fa(MONO,13)} letter-spacing="2.5" fill="${LIGHT}">${useT?'TEMPO':'HÖHE'} JE ${L1===1000?'KILOMETER':(L1/1000)+' KM'}</text>`;
       rows.forEach(([d0,d1],k)=>{const base=y0+head+amp+k*sp,pts=[];let cs=0,cn=0;
-        for(let j=0;j<=70;j++){const dd=d0+(d1-d0)*j/70,i=idxAt(S.d,dd),t=clamp((val(i)-lo)/((hi-lo)||1),0,1);pts.push([px+pw*(dd-d0)/1000,base-amp*(0.06+0.94*Math.pow(t,1.6))]);if(ci){cs+=ci.vals[i];cn++;}}
+        for(let j=0;j<=70;j++){const dd=d0+(d1-d0)*j/70,i=idxAt(S.d,dd),t=clamp((val(i)-lo)/((hi-lo)||1),0,1);pts.push([px+pw*(dd-d0)/L1,base-amp*(0.06+0.94*Math.pow(t,1.6))]);if(ci){cs+=ci.vals[i];cn++;}}
         const line=pathD(pts),lastX=pts[pts.length-1][0];
         const col=ci?ramp(RAMP,(cs/cn-ci.lo)/((ci.hi-ci.lo)||1)):ramp([P.fg,'#FFD166'],k/Math.max(1,n-1));
         s+=`<path d="M${px},${r1(base)}L${line.slice(1)}L${r1(lastX)},${r1(base)}Z" fill="url(#${id}-bg)"/>`;
         s+=`<path d="${line}" fill="none" stroke="${col}" stroke-width="2.6" stroke-linejoin="round"/>`;
-        if((k+1)%5===0||k===0)s+=`<text x="${px-12}" y="${r1(base-amp*0.3+4)}" text-anchor="end" ${fa({fam:'m',w:400},12)} fill="${LIGHT}">${k+1}</text>`;});
-      s+=`<text x="${px}" y="${r1(yEnd)}" ${fa({fam:'m',w:400},12)} fill="${LIGHT}">0 m</text><text x="${r1(px+pw)}" y="${r1(yEnd)}" text-anchor="end" ${fa({fam:'m',w:400},12)} fill="${LIGHT}">1000 m</text>`;
+        if((k+1)%5===0||k===0)s+=`<text x="${px-12}" y="${r1(base-amp*0.3+4)}" text-anchor="end" ${fa({fam:'m',w:400},12)} fill="${LIGHT}">${(k+1)*L1/1000}</text>`;});
+      s+=`<text x="${px}" y="${r1(yEnd)}" ${fa({fam:'m',w:400},12)} fill="${LIGHT}">0 m</text><text x="${r1(px+pw)}" y="${r1(yEnd)}" text-anchor="end" ${fa({fam:'m',w:400},12)} fill="${LIGHT}">${L1===1000?'1000 m':L1/1000+' km'}</text>`;
       const rs=Math.min(colW,(yEnd-y0)*0.42);
       s+=`<rect x="${r1(colX)}" y="${r1(y0+head)}" width="${r1(colW)}" height="${r1(rs)}" fill="#fff" fill-opacity=".04" stroke="${LIGHT}" stroke-opacity=".25" stroke-width="1.5"/>`;
       s+=routeLayer(C,{x:colX+16,y:y0+head+16,w:colW-32,h:rs-32},
@@ -216,13 +216,71 @@ const TEMPLATES={
       s+=itemsColumn({x:colX,y:y0+head+rs+34,w:colW,h:yEnd-(y0+head+rs+34)},statItems(S,o.stats),{label:LIGHT,value:'#fff',sep:L.sep,stretch:75,italic:false});
       if(gl.length)s+=graphs(C,{x:m,y:H-64-gh,w:cw,h:gh},{label:LIGHT,fill:LIGHT,fillOp:.3,line:LIGHT,bar:LIGHT,barOp:.7,best:P.fg,ramp:RAMP});
       return s+top.svg;}},
+  /* --- Pass: Höhenprofil wie bei Radrennen, Abschnitte in Steigungsfarben --- */
+  pass:{name:'Pass',blurb:'Trikotgelb, Höhenprofil in Steigungsfarben',noEcho:true,pal:{bg:'#FFD200',fg:'#16130E'},fgLabel:'Schrift',
+    defaults:{echo:false,color:'none',graphs:[]},
+    look(C,P){const{id}=C;
+      const back=`<defs><pattern id="${id}-pin" patternUnits="userSpaceOnUse" width="18" height="18" patternTransform="rotate(45)"><rect width="1.6" height="18" fill="${P.fg}" fill-opacity=".05"/></pattern></defs>
+        <rect ${bgr(C)} fill="${P.bg}"/><rect ${bgr(C)} fill="url(#${id}-pin)"/>`;
+      return {back,dark:false,ink:P.fg,label:rgba(P.fg,.65),sep:rgba(P.fg,.2),eyebrow:rgba(P.fg,.8),sub:rgba(P.fg,.85),accent:'#E0412D',heat:P.fg,
+        title:{font:{fam:'d',w:900,it:true,st:125},max:122,fill:P.fg},stretch:100,halo:P.bg,
+        map:{line:P.fg,water:'#2C7FB8',green:'#2FA36B',op:.55,text:rgba(P.fg,.6)}};},
+    render(C){const{W,H,S,o,id}=C,P=pal(C,'pass'),L=this.look(C,P),m=70,cw=W-2*m,INK=P.fg;
+      const GC=[[-Infinity,'#7D93AE','bergab'],[0,'#2FA36B','0–3 %'],[3,'#F28C28','3–6 %'],[6,'#E0412D','6–9 %'],[9,'#4A1460','ab 9 %']];
+      const gcol=g=>{let c=GC[0];for(const x of GC)if(g>=x[0])c=x;return c[1];};
+      const oo=Object.assign({},o,{graphs:o.graphs.filter(g=>g!=='profile')});const C2=Object.assign({},C,{o:oo});
+      let s=L.back;const top=topBlock(C2,L);
+      const heroKey=S.hasEle?'climb':'dist';
+      const bot=bottomBlock(C2,{stats:{label:L.label,value:INK,sep:L.sep,stretch:100},graph:{label:L.label,fill:INK,fillOp:.25,line:INK,bar:INK,barOp:.75,best:'#E0412D',ramp:['#2FA36B','#E0412D']}},
+        statItems(S,oo.stats.filter(k=>k!==heroKey)));
+      const y0=top.y+36,y1=bot.top-26,rs=Math.min(270,(y1-y0)*0.36);
+      // Strecke als kleine Karte oben rechts
+      const rx=W-m-rs;
+      s+=`<rect x="${r1(rx)}" y="${r1(y0)}" width="${r1(rs)}" height="${r1(rs)}" fill="#fff" fill-opacity=".35" stroke="${INK}" stroke-width="2"/>`;
+      s+=routeLayer(C,{x:rx+18,y:y0+18,w:rs-36,h:rs-36},{color:INK,width:3.5,ramp:['#2FA36B','#E0412D'],mk:{fill:P.bg,stroke:INK,text:INK,halo:P.bg},map:L.map,tint:P.bg},{x:rx,y:y0,w:rs,h:rs,hard:true});
+      // große Zahl links daneben: Höhenmeter
+      const[hv,hu]=heroKey==='climb'?[Math.round(S.climb||0).toLocaleString('de-DE'),'HM']:STATS.dist.val(S);
+      const hf={fam:'d',w:900,it:true,st:100},hs=fit(hv,hf,rx-m-90,rs*0.62);
+      s+=`<text x="${m}" y="${r1(y0+rs*0.2)}" ${fa(MONO,14)} letter-spacing="2.5" fill="${L.label}">${heroKey==='climb'?'HÖHENMETER':'DISTANZ'}</text>`;
+      s+=`<text x="${m}" y="${r1(y0+rs*0.2+20+hs*0.78)}" ${fa(hf,hs)} fill="${INK}">${esc(hv)}<tspan dx="${r1(hs*0.06)}" font-family="${FAM.m}" font-weight="700" font-style="normal" font-size="${r1(hs*0.2)}" style="font-stretch:100%">${esc(String(hu).toUpperCase())}</tspan></text>`;
+      if(S.hasEle)s+=`<text x="${m}" y="${r1(y0+rs*0.2+20+hs*0.78+34)}" ${fa({fam:'m',w:400},15)} letter-spacing="1" fill="${L.label}">höchster Punkt ${Math.round(S.eleMax).toLocaleString('de-DE')} m · max. ${num(S.gradMax,1)} %</text>`;
+      // Profil
+      const px=m,pw=cw-20,dx=16,dy=-12,pyTop=y0+rs+44,base=y1-58,ph=base-pyTop;
+      if(S.hasEle&&ph>80){
+        const N=clamp(Math.round(S.dist/250),20,72),len=S.dist/N,span=Math.max(S.eleMax-S.eleMin,80),e0=S.eleMin-span*0.1;
+        const E=[];for(let k=0;k<=N;k++)E.push(S.eleS[idxAt(S.d,k*len)]);
+        const X=k=>px+pw*k/N,Y=e=>base-(e-e0)/(span*1.1)*ph*0.92;
+        let tops='',fronts='';const gr=[];
+        for(let k=0;k<N;k++){const g=(E[k+1]-E[k])/len*100,c=gcol(g),xa=X(k),xb=X(k+1),ya=Y(E[k]),yb=Y(E[k+1]);gr.push({k,g});
+          tops+=`<polygon points="${r1(xa)},${r1(ya)} ${r1(xb)},${r1(yb)} ${r1(xb+dx)},${r1(yb+dy)} ${r1(xa+dx)},${r1(ya+dy)}" fill="${lt(c,.35)}" stroke="${INK}" stroke-width=".8" stroke-opacity=".35"/>`;
+          fronts+=`<polygon points="${r1(xa)},${r1(base)} ${r1(xa)},${r1(ya)} ${r1(xb)},${r1(yb)} ${r1(xb)},${r1(base)}" fill="${c}" stroke="${INK}" stroke-width=".8" stroke-opacity=".35"/>`;}
+        const xe=X(N),ye=Y(E[N]);
+        s+=`<polygon points="${r1(px+dx)},${r1(base+dy)} ${r1(xe+dx)},${r1(base+dy)} ${r1(xe+dx)},${r1(ye+dy)}" fill="${INK}" fill-opacity=".08"/>`;
+        s+=tops+fronts+`<polygon points="${r1(xe)},${r1(base)} ${r1(xe)},${r1(ye)} ${r1(xe+dx)},${r1(ye+dy)} ${r1(xe+dx)},${r1(base+dy)}" fill="${dk(gcol(0),.35)}"/>`;
+        s+=`<line x1="${px}" x2="${r1(xe+dx)}" y1="${r1(base)}" y2="${r1(base)}" stroke="${INK}" stroke-width="2.5"/>`;
+        // steilste Abschnitte beschriften
+        const lab=[];gr.filter(q=>q.g>=3).sort((a,b)=>b.g-a.g).forEach(q=>{if(lab.length<4&&lab.every(z=>Math.abs(z.k-q.k)>N/10))lab.push(q);});
+        lab.forEach(q=>{const xm=(X(q.k)+X(q.k+1))/2+dx/2,ym=Math.min(Y(E[q.k]),Y(E[q.k+1]))+dy-12;
+          s+=`<text x="${r1(xm)}" y="${r1(ym)}" text-anchor="middle" ${fa(MONO,15)} fill="${INK}">${num(q.g,1)} %</text>`;});
+        // höchster Punkt
+        let km=0;E.forEach((e,k)=>{if(e>E[km])km=k;});const xt=X(km)+dx/2,yt=Y(E[km])+dy;
+        if(!lab.some(q=>Math.abs(q.k-km)<=N/10))s+=`<line x1="${r1(xt)}" x2="${r1(xt)}" y1="${r1(yt-6)}" y2="${r1(yt-30)}" stroke="${INK}" stroke-width="2"/><text x="${r1(xt)}" y="${r1(yt-38)}" text-anchor="middle" ${fa(MONO,15)} fill="${INK}">${Math.round(E[km]).toLocaleString('de-DE')} m</text>`;
+        // Achse
+        const stepKm=[1,2,5,10,20,50].find(v=>S.dist/1000/v<=10)||100;
+        for(let v=0;v*1000<=S.dist+1;v+=stepKm){const x=px+pw*v*1000/S.dist;s+=`<line x1="${r1(x)}" x2="${r1(x)}" y1="${r1(base)}" y2="${r1(base+8)}" stroke="${INK}" stroke-width="2"/><text x="${r1(x)}" y="${r1(base+26)}" text-anchor="middle" ${fa({fam:'m',w:400},13)} fill="${INK}">${v}</text>`;}
+        s+=`<text x="${r1(xe+dx)}" y="${r1(base+26)}" text-anchor="end" ${fa(MONO,13)} fill="${INK}">KM</text>`;
+        // Legende
+        let lx=px;GC.forEach(([,c,t])=>{s+=`<rect x="${r1(lx)}" y="${r1(base+40)}" width="14" height="14" fill="${c}" stroke="${INK}" stroke-width="1"/><text x="${r1(lx+20)}" y="${r1(base+52)}" ${fa({fam:'m',w:400},13)} fill="${INK}">${t}</text>`;lx+=20+measure(t,{fam:'m',w:400})*0.13+26;});
+      } else if(!S.hasEle)s+=`<text x="${m}" y="${r1(pyTop+40)}" ${fa({fam:'b',w:600},20)} fill="${L.label}">Diese Datei enthält keine Höhendaten.</text>`;
+      return s+top.svg+bot.svg;}},
+
 };
 
 /* ================= Jahresposter: Kacheln und Heatmap ================= */
-function collStats(G){const it=[{label:'Läufe',v:String(G.runs.length),u:''},{label:'Kilometer',v:G.dist<100000?num(G.dist/1000,1):Math.round(G.dist/1000).toLocaleString('de-DE'),u:'km'}];
+function collStats(G){const it=[{label:G.words.many,v:String(G.runs.length),u:''},{label:'Kilometer',v:G.dist<100000?num(G.dist/1000,1):Math.round(G.dist/1000).toLocaleString('de-DE'),u:'km'}];
   if(G.time)it.push({label:'Laufzeit',v:`${Math.floor(G.time/3600)}:${pad2(Math.floor(G.time%3600/60))}`,u:'h'});
   if(G.climb)it.push({label:'Höhenmeter',v:Math.round(G.climb).toLocaleString('de-DE'),u:'m'});
-  it.push({label:'Längster Lauf',v:num(G.longest/1000,1),u:'km'});return it;}
+  it.push({label:G.words.longest,v:num(G.longest/1000,1),u:'km'});return it;}
 function runPts(C,S,fine){const p=C.o.privacy;let a=0,b=S.n-1;if(p>0&&p*2<S.dist-200){a=idxAt(S.d,p);b=idxAt(S.d,S.dist-p);}
   const src=fine?S.simpF:S.simpC;return src.filter(q=>q[2]>=a&&q[2]<=b);}
 const COLLVIEWS={
@@ -248,7 +306,7 @@ const COLLVIEWS={
     let s=L.back+mapLayer(C,T,{x:-60,y:box.y-40,w:W+120,h:box.h+80},L.map,G.map)+`<g style="mix-blend-mode:${blend}">`;
     for(const r of all)s+=`<path d="${pathD(r.map(([x,y])=>T.f(x,y)))}" fill="none" stroke="${L.heat}" stroke-opacity="${r1(op*100)/100}" stroke-width="${C.thumb?2:2.6}" stroke-linecap="round" stroke-linejoin="round"/>`;
     s+='</g>';
-    if(G.runs.length>runs.length)s+=`<text x="${W-m}" y="${r1(box.y+box.h+22)}" text-anchor="end" ${fa({fam:'m',w:400},12)} fill="${L.label}">${G.runs.length-runs.length} Läufe liegen außerhalb des Ausschnitts</text>`;
+    if(G.runs.length>runs.length)s+=`<text x="${W-m}" y="${r1(box.y+box.h+22)}" text-anchor="end" ${fa({fam:'m',w:400},12)} fill="${L.label}">${G.runs.length-runs.length} ${G.words.many} liegen außerhalb des Ausschnitts</text>`;
     return s+top.svg+bot.svg;}},
 };
 function buildCollection(runs){
@@ -259,8 +317,9 @@ function buildCollection(runs){
   const cxG=Math.cos(mlat*Math.PI/180)*111320,xy=[];for(const S of heatRuns)for(let i=0;i<S.n;i+=8)xy.push([S.xy[i][0]/S.cx*cxG,S.xy[i][1]]);
   const years=[...new Set(runs.filter(S=>S.start).map(S=>S.start.getFullYear()))],first=runs[0].start,last=runs[runs.length-1].start;
   const fmt=d=>d?d.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
-  return {isColl:true,runs,heatRuns,cx:cxG,xy,map:null,mapState:'idle',
+  const sports=[...new Set(runs.map(S=>S.sport))],words=sports.length===1?SPORTS[sports[0]]:MIXED;
+  return {isColl:true,words,runs,heatRuns,cx:cxG,xy,map:null,mapState:'idle',
     dist:runs.reduce((a,S)=>a+S.dist,0),time:runs.reduce((a,S)=>a+(isFinite(S.duration)?S.duration:0),0),
     climb:runs.reduce((a,S)=>a+(S.climb||0),0),longest:Math.max(...runs.map(S=>S.dist)),
-    title:years.length===1?`Laufjahr ${years[0]}`:`${runs.length} Läufe`,
-    eyebrow:`${runs.length} LÄUFE${first?` · ${fmt(first)} – ${fmt(last)}`:''}`};}
+    title:years.length===1?`${words.year} ${years[0]}`:`${runs.length} ${words.many}`,
+    eyebrow:`${runs.length} ${words.many.toUpperCase()}${first?` · ${fmt(first)} – ${fmt(last)}`:''}`};}

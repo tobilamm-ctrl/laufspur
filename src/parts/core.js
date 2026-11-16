@@ -55,18 +55,19 @@ function parseGPX(text,fileName){
   for(const n of nodes){
     const lat=parseFloat(n.getAttribute('lat')),lon=parseFloat(n.getAttribute('lon'));
     if(!isFinite(lat)||!isFinite(lon)) continue;
-    const e=child(n,'ele'),tm=child(n,'time'),hr=child(n,'hr')??child(n,'heartrate');
+    const e=child(n,'ele'),tm=child(n,'time'),hr=child(n,'hr')??child(n,'heartrate'),pw=child(n,'power')??child(n,'PowerInWatts')??child(n,'Watts'),cd=child(n,'cad')??child(n,'cadence');
     let t=tm?Date.parse(tm):NaN; if(isFinite(t)&&t0===null) t0=t;
-    pts.push({lat,lon,ele:e!==null?parseFloat(e):NaN,t:isFinite(t)?(t-t0)/1000:NaN,hr:hr?parseFloat(hr):NaN});
+    pts.push({lat,lon,ele:e!==null?parseFloat(e):NaN,t:isFinite(t)?(t-t0)/1000:NaN,hr:hr?parseFloat(hr):NaN,pw:pw?parseFloat(pw):NaN,cad:cd?parseFloat(cd):NaN});
   }
+  const trk=doc.getElementsByTagNameNS('*','trk')[0],typeEl=trk&&[...trk.children].find(c=>c.localName==='type');
   const meta={};
   for(const k of ['totalDistance','totalTime','cumulativeClimb']){const v=child(doc.documentElement,k);if(v!==null&&isFinite(parseFloat(v)))meta[k]=parseFloat(v);}
-  return {pts,startTime:t0,meta,fileName};
+  return {pts,startTime:t0,meta,fileName,type:typeEl?typeEl.textContent.trim():''};
 }
 function decodeSample(s){
   const st=s.hr?5:4;let la=0,lo=0,e=0,t=0;const pts=[];
   for(let i=0;i<s.d.length;i+=st){la+=s.d[i];lo+=s.d[i+1];e+=s.d[i+2];t+=s.d[i+3];pts.push({lat:la/1e6,lon:lo/1e6,ele:e/10,t,hr:s.hr?s.d[i+4]:NaN});}
-  return {pts,startTime:Date.parse(s.t0),meta:s.meta,fileName:s.file};
+  return {pts,startTime:Date.parse(s.t0),meta:s.meta,fileName:s.file,type:s.type||''};
 }
 
 /* ================= Lauf auswerten ================= */
@@ -102,15 +103,14 @@ function analyze(raw){
   const speed=smooth(200),speedG=smooth(350);
   const sv=[...speed].filter(v=>v>0.5);
   const lo=sv.length?pct(sv,0.05):1,hi=sv.length?pct(sv,0.95):2;
-  const kmIdx=[],splits=[];let prevT=0;
-  for(let k=1;k*1000<=dist+0.01;k++){
-    const target=k*1000;let i=idxAt(d,target);i=Math.max(1,i);kmIdx.push(i);
-    if(hasTime){const f=(target-d[i-1])/((d[i]-d[i-1])||1);const tk=t[i-1]+(t[i]-t[i-1])*clamp(f,0,1);splits.push(tk-prevT);prevT=tk;}
-  }
-  let best=Infinity,bestKm=-1;splits.forEach((s,i)=>{if(s<best){best=s;bestKm=i+1;}});
+  const maxSpeed=hasTime?Math.max(...speed):NaN;
+  let gradMax=0;if(hasEle){let j=0;for(let i=0;i<n;i++){while(j<n-1&&d[j]-d[i]<200)j++;if(d[j]-d[i]>=150)gradMax=Math.max(gradMax,(eleS[j]-eleS[i])/(d[j]-d[i])*100);}}
+  const avgOf=k=>{const v=P.map(p=>p[k]).filter(x=>isFinite(x)&&x>0);return v.length>n*0.5?v.reduce((a,b)=>a+b,0)/v.length:NaN;};
+  const power=avgOf('pw'),cad=avgOf('cad');
   const start=raw.startTime?new Date(raw.startTime):null;
-  return {cx,lat0,lon0,map:null,mapState:'idle',n,d,xy,eleS,eleMin,eleMax,hasEle,hasTime,speed,speedG,lo,hi,dist,duration,durationRaw:duration,climb,
-    hasHR,hrS,hrAvg,hrMax,hrLo,hrHi,kmIdx,splits,best,bestKm,start,fileName:raw.fileName,points:raw.pts.length};
+  const S={cx,lat0,lon0,map:null,mapState:'idle',n,d,xy,eleS,eleMin,eleMax,hasEle,hasTime,speed,speedG,lo,hi,dist,duration,durationRaw:duration,climb,
+    hasHR,hrS,hrAvg,hrMax,hrLo,hrHi,t,maxSpeed,gradMax,power,cad,type:raw.type||'',start,fileName:raw.fileName,points:raw.pts.length};
+  S.sportAuto=S.sport=detectSport(raw.type,S);return S;
 }
 function idxAt(d,v){let a=0,b=d.length-1;while(a<b){const m=(a+b)>>1;if(d[m]<v)a=m+1;else b=m;}return a;}
 
@@ -118,20 +118,28 @@ function idxAt(d,v){let a=0,b=d.length-1;while(a<b){const m=(a+b)>>1;if(d[m]<v)a
 const STATS={
   dist:{label:'Distanz',need:null,val:S=>[num(S.dist/1000,2),'km']},
   time:{label:'Zeit',need:'time',val:S=>[dur(S.duration),'']},
-  pace:{label:'Pace',need:'time',val:S=>[pace(S.duration/(S.dist/1000)),'/km']},
-  climb:{label:'Höhenmeter',need:'ele',val:S=>[String(Math.round(S.climb||0)),'m']},
+  pace:{label:'Pace / Ø Tempo',lab:S=>isPace(S)?'Pace':'Ø Tempo',need:'time',val:S=>fmtV(S,S.dist/S.duration)},
+  climb:{label:'Höhenmeter',need:'ele',val:S=>[Math.round(S.climb||0).toLocaleString('de-DE'),'m']},
   date:{label:'Datum',need:'start',val:S=>[S.start.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'}),'']},
   start:{label:'Start',need:'start',val:S=>[S.start.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}),'Uhr']},
-  best:{label:'Schnellster km',need:'splits',val:S=>[pace(S.best),'/km']},
-  speed:{label:'Tempo',need:'time',val:S=>[num(S.dist/S.duration*3.6,1),'km/h']},
+  best:{label:'Schnellster Abschnitt',lab:S=>`Schnellste${seg(S).len===1000?'r km':' '+seg(S).name}`,need:'splits',val:S=>fmtV(S,seg(S).len/seg(S).best)},
+  speed:{label:'Tempo (km/h)',lab:()=>'Tempo',need:'speed',val:S=>[num(S.dist/S.duration*3.6,1),'km/h']},
+  maxspeed:{label:'Max. Tempo',need:'time',val:S=>[num(S.maxSpeed*3.6,1),'km/h']},
+  top:{label:'Höchster Punkt',need:'ele',val:S=>[Math.round(S.eleMax).toLocaleString('de-DE'),'m']},
+  grad:{label:'Max. Steigung',need:'ele',val:S=>[num(S.gradMax,1),'%']},
+  power:{label:'Ø Leistung',need:'power',val:S=>[String(Math.round(S.power)),'W']},
+  cad:{label:'Ø Kadenz',need:'cad',val:S=>[String(Math.round(S.cad)),S.sport==='bike'?'rpm':'spm']},
   hr:{label:'Ø Puls',need:'hr',val:S=>[String(Math.round(S.hrAvg)),'bpm']},
   hrmax:{label:'Max. Puls',need:'hr',val:S=>[String(Math.round(S.hrMax)),'bpm']},
   rank:{label:'Platz',need:'rank',val:()=>[state.rank.trim(),'']},
   bibno:{label:'Startnummer',need:'bibno',val:()=>[state.bibno.trim(),'']},
 };
 function statOk(S,k){const n=STATS[k].need;return !n||(n==='time'&&S.hasTime&&isFinite(S.duration))||(n==='ele'&&S.hasEle)||(n==='start'&&!!S.start)||
-  (n==='splits'&&S.splits.length>0)||(n==='hr'&&S.hasHR)||(n==='rank'&&!!state.rank.trim())||(n==='bibno'&&!!state.bibno.trim());}
-function autoTitle(S){const km=S.dist/1000;
+  (n==='splits'&&seg(S).times.length>0)||(n==='speed'&&isPace(S)&&S.hasTime)||(n==='power'&&isFinite(S.power))||(n==='cad'&&isFinite(S.cad))||(n==='hr'&&S.hasHR)||(n==='rank'&&!!state.rank.trim())||(n==='bibno'&&!!state.bibno.trim());}
+function autoTitle(S){const km=S.dist/1000,h=S.start?S.start.getHours():12;
+  if(S.sport==='bike'){if(km>=200)return 'Radmarathon';if(km>=95)return `${Math.round(km)} Kilometer`;if((S.climb||0)>=1000)return 'Bergtour';
+    return h<10?'Morgenrunde':h>=17?'Feierabendrunde':'Radtour';}
+  if(S.sport==='hike'){if((S.climb||0)>=700)return 'Gipfeltour';return h<10?'Morgenwanderung':'Wanderung';}
   if(km>=42&&km<=43)return 'Marathon';if(km>=21&&km<=21.6)return 'Halbmarathon';
   if(km>=9.85&&km<=10.4)return '10 Kilometer';if(km>=4.9&&km<=5.3)return '5 Kilometer';
   if(S.start){const h=S.start.getHours();return h<10?'Morgenlauf':h<17?'Mittagslauf':'Abendlauf';}return 'Mein Lauf';}
@@ -142,6 +150,6 @@ function eyebrow(S){if(S.isColl)return S.eyebrow;if(!S.start)return `${num(S.dis
   return `${wd} · ${dt} · ${tm} Uhr`.toUpperCase();}
 /* Farbcodierung der Strecke: Pace oder Puls */
 function colorInfo(C){const S=C.S,o=C.o;
-  if(o.color==='pace'&&S.hasTime)return {vals:S.speed,lo:S.lo,hi:S.hi,label:'PACE',lab:v=>pace(1000/v)+' /km'};
+  if(o.color==='pace'&&S.hasTime)return {vals:S.speed,lo:S.lo,hi:S.hi,label:isPace(S)?'PACE':'TEMPO',lab:v=>fmtVs(S,v)};
   if(o.color==='hr'&&S.hasHR)return {vals:S.hrS,lo:S.hrLo,hi:S.hrHi,label:'PULS',lab:v=>Math.round(v)+' bpm'};
   return null;}

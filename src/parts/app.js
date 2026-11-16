@@ -48,13 +48,16 @@ function processOSM(json,S){
 
 /* ================= Zustand ================= */
 let RUN=null,COLL=null,HIT=null,markMode=false;
-const PRESET_KEYS=['tpl','stats','color','echo','km','ends','map','graphs','privacy','fmt','size','colors','name','view','rotAuto'];
-const DEFAULTS={tpl:'tartan',stats:['dist','time','pace','climb'],color:'none',echo:true,km:true,ends:true,map:false,graphs:['profile'],privacy:200,fmt:'a',size:2,colors:{},name:'',view:'tiles',rotAuto:false};
-const state=Object.assign(structuredClone(DEFAULTS),{mode:'single',title:'',sub:'',rank:'',bibno:'',offtime:'',marks:[],photo:null,rot:0});
+const PRESET_KEYS=['tpl','statsBy','color','echo','km','ends','map','graphs','privacy','fmt','size','colors','name','view','rotAuto'];
+const DEFAULTS={tpl:'tartan',statsBy:{run:SPORTS.run.stats.slice(),bike:SPORTS.bike.stats.slice(),hike:SPORTS.hike.stats.slice()},color:'none',echo:true,km:true,ends:true,map:false,graphs:['profile'],privacy:200,fmt:'a',size:2,colors:{},name:'',view:'tiles',rotAuto:false};
+const state=Object.assign(structuredClone(DEFAULTS),{mode:'single',sportSel:'auto',titleAuto:true,title:'',sub:'',rank:'',bibno:'',offtime:'',marks:[],photo:null,rot:0});
 /* Einstellungen prüfen, bevor sie übernommen werden (Datei oder Browser-Speicher) */
 function cleanPreset(p){const o={};if(!p||typeof p!=='object')return o;
   if(TEMPLATES[p.tpl])o.tpl=p.tpl;
-  if(Array.isArray(p.stats))o.stats=p.stats.filter(k=>STATS[k]);
+  const sb=Object.assign(structuredClone(DEFAULTS.statsBy),state.statsBy);let anyS=false;
+  if(Array.isArray(p.stats)){sb.run=p.stats.filter(k=>STATS[k]);anyS=true;}
+  if(p.statsBy&&typeof p.statsBy==='object')for(const k in SPORTS)if(Array.isArray(p.statsBy[k])){sb[k]=p.statsBy[k].filter(x=>STATS[x]);anyS=true;}
+  if(anyS)o.statsBy=sb;
   if(['none','pace','hr'].includes(p.color))o.color=p.color;
   for(const k of ['echo','km','ends','map','rotAuto'])if(typeof p[k]==='boolean')o[k]=p[k];
   if(Array.isArray(p.graphs))o.graphs=p.graphs.filter(g=>GRAPHS.some(x=>x[0]===g));
@@ -72,7 +75,7 @@ let saveT;function remember(){clearTimeout(saveT);saveT=setTimeout(()=>{try{loca
 /* ================= Rendern ================= */
 const cur=()=>state.mode==='coll'?COLL:RUN;
 function renderSVG(tplKey,id,exp){
-  const F=FORMATS[state.fmt],W=1000,H=F.h,S=cur(),o=Object.assign({},state,{tpl:tplKey});
+  const F=FORMATS[state.fmt],W=1000,H=F.h,S=cur(),o=Object.assign({},state,{tpl:tplKey,stats:S.isColl?[]:state.statsBy[S.sport]||[]});
   if(!S.isColl){const off=parseTime(state.offtime);S.duration=off||S.durationRaw;}
   const C={W,H,S,o,id,thumb:id[0]==='t',coll:!!S.isColl};
   let body=S.isColl?COLLVIEWS[state.view].render(C):TEMPLATES[tplKey].render(C);
@@ -98,11 +101,11 @@ function draw(){
 }
 function summaries(){
   const set=(k,t)=>{const el=document.getElementById('sum-'+k);if(el)el.textContent=t;};const S=cur(),coll=state.mode==='coll';
-  set('strecke',coll?`${COLL.runs.length} Läufe · ${num(COLL.dist/1000,0)} km`:`${num(S.dist/1000,1)} km · Privatzone ${state.privacy?state.privacy+' m':'aus'}`);
+  set('strecke',coll?`${COLL.runs.length} ${COLL.words.many} · ${num(COLL.dist/1000,0)} km`:`${sp(S).label} · ${num(S.dist/1000,1)} km · Privatzone ${state.privacy?state.privacy+' m':'aus'}`);
   set('vorlage',(coll?COLLVIEWS[state.view].name+' · ':'')+TEMPLATES[state.tpl].name+(state.colors[state.tpl]?' · eigene Farben':''));
   set('text',state.title||'ohne Titel');
   set('marks',state.marks.length?`${state.marks.length} gesetzt`:'keine');
-  if(!coll)set('zahlen',`${state.stats.filter(k=>statOk(S,k)).length} gewählt`);
+  if(!coll)set('zahlen',`${(state.statsBy[S.sport]||[]).filter(k=>statOk(S,k)).length} gewählt · ${sp(S).label}`);
   const n=[state.color!=='none',state.echo&&!TEMPLATES[state.tpl].noEcho,state.km,state.ends,state.map,!!state.photo,state.rotAuto||state.rot!==0].filter(Boolean).length+state.graphs.length;
   set('elemente',`${n} aktiv`);
   set('format',`${FORMATS[state.fmt].label} · ${sizeList(state.fmt)[state.size].l}`);
@@ -112,9 +115,9 @@ function summaries(){
 /* ================= Oberfläche ================= */
 const chipDefs=[];
 function chipGroup(sel,items,type='checkbox',name=''){const box=$(sel);box.innerHTML='';
-  items.forEach(it=>{const l=document.createElement('label');l.className='chip';l.innerHTML=`<input type="${type}" ${name?`name="${name}"`:''} id="${it.id}"><span>${esc(it.label)}</span>`;
+  items.forEach(it=>{const l=document.createElement('label');l.className='chip';l.innerHTML=`<input type="${type}" ${name?`name="${name}"`:''} id="${it.id}"><span>${esc(it.label)}</span>`;it.span=l.querySelector('span');
     const inp=l.querySelector('input');inp.onchange=()=>{it.set(inp.checked);syncChips();schedule(it.swap);};chipDefs.push({it,inp});box.appendChild(l);});}
-function syncChips(){for(const{it,inp}of chipDefs){const ok=!it.ok||it.ok();inp.disabled=!ok;inp.checked=ok&&it.get();}}
+function syncChips(){for(const{it,inp}of chipDefs){const ok=!it.ok||it.ok();inp.disabled=!ok;inp.checked=ok&&it.get();if(it.dyn)it.span.textContent=it.dyn();}}
 function buildUI(){
   const g=$('#tplgrid');g.innerHTML='';
   for(const k in TEMPLATES){const T=TEMPLATES[k],b=document.createElement('button');b.type='button';b.className='tpl';b.id='tpl-'+k;
@@ -123,16 +126,20 @@ function buildUI(){
     g.appendChild(b);}
   const S=()=>cur(),single=()=>state.mode==='single';
   chipGroup('#viewchips',Object.keys(COLLVIEWS).map(k=>({id:'view-'+k,label:COLLVIEWS[k].name,get:()=>state.view===k,set:v=>{if(v)state.view=k;},swap:true})),'radio','view');
-  chipGroup('#statchips',Object.keys(STATS).map(k=>({id:'st-'+k,label:STATS[k].label,get:()=>state.stats.includes(k),
-    set:v=>{state.stats=Object.keys(STATS).filter(x=>x===k?v:state.stats.includes(x));},ok:()=>single()&&statOk(RUN,k)})));
+  const SL=()=>state.statsBy[RUN.sport]||(state.statsBy[RUN.sport]=SPORTS[RUN.sport].stats.slice());
+  chipGroup('#sportchips',[['auto','Automatisch'],...Object.keys(SPORTS).map(k=>[k,SPORTS[k].label])].map(([k,l])=>({id:'sport-'+k,label:l,
+    dyn:k==='auto'?()=>`Automatisch${RUN?' ('+SPORTS[RUN.sportAuto].label+')':''}`:null,get:()=>state.sportSel===k,set:v=>{if(v)setSport(k);},swap:true})),'radio','sport');
+  chipGroup('#statchips',Object.keys(STATS).map(k=>({id:'st-'+k,label:STATS[k].label,dyn:()=>RUN?statLabel(RUN,k):STATS[k].label,get:()=>SL().includes(k),
+    set:v=>{state.statsBy[RUN.sport]=Object.keys(STATS).filter(x=>x===k?v:SL().includes(x));},ok:()=>single()&&statOk(RUN,k)})));
   chipGroup('#elchips',[
-    ['pace','Pace-Farben',()=>single()&&RUN.hasTime,()=>state.color==='pace',v=>{state.color=v?'pace':'none';}],
+    ['pace','Pace-Farben',()=>single()&&RUN.hasTime,()=>state.color==='pace',v=>{state.color=v?'pace':'none';},()=>RUN&&!isPace(RUN)?'Tempo-Farben':'Pace-Farben'],
     ['hrc','Puls-Farben',()=>single()&&RUN.hasHR,()=>state.color==='hr',v=>{state.color=v?'hr':'none';}],
     ['echo','Tempo-Echo',()=>single()&&!TEMPLATES[state.tpl].noEcho],
     ['km','Kilometermarken',single],['ends','Start & Ziel',single],
     ['map','Kartengrundlage',()=>single()||state.view==='heat',null,v=>{state.map=v;if(v)loadMap();mapStatus();}]
-  ].map(([k,l,ok,get,set])=>({id:'el-'+k,label:l,ok,get:get||(()=>state[k]),set:set||(v=>{state[k]=v;})})));
-  chipGroup('#graphchips',GRAPHS.map(([k,l])=>({id:'gr-'+k,label:l,get:()=>state.graphs.includes(k),
+  ].map(([k,l,ok,get,set,dyn])=>({id:'el-'+k,label:l,ok,dyn,get:get||(()=>state[k]),set:set||(v=>{state[k]=v;})})));
+  const GL={pace:()=>RUN&&isPace(RUN)?'Pace-Kurve':'Tempo-Kurve',splits:()=>RUN&&seg(RUN).len===1000?'Km-Splits':`Abschnitte (${RUN?seg(RUN).name:'km'})`};
+  chipGroup('#graphchips',GRAPHS.map(([k,l])=>({id:'gr-'+k,label:l,dyn:GL[k]||null,get:()=>state.graphs.includes(k),
     set:v=>{state.graphs=GRAPHS.map(x=>x[0]).filter(x=>x===k?v:state.graphs.includes(x));},ok:()=>single()&&graphOk(RUN,k)})));
   chipGroup('#fmtchips',Object.keys(FORMATS).map(k=>({id:'fmt-'+k,label:FORMATS[k].label,get:()=>state.fmt===k,set:v=>{if(v){state.fmt=k;state.size=FORMATS[k].def;fillSizes();}},swap:true})),'radio','fmt');
 }
@@ -169,29 +176,32 @@ $('#poster').addEventListener('click',e=>{if(!markMode||!HIT||state.mode!=='sing
   const i=state.marks.sort((a,b)=>a.d-b.d).findIndex(m=>m.d===RUN.d[HIT.a+best]),inp=$('#mark-'+i);if(inp){$('#sec-marks').open=true;inp.focus();inp.select();}});
 
 /* ---- Laden ---- */
-function setRun(S,keepTitle){RUN=S;state.mode='single';if(!keepTitle)state.title=autoTitle(S);
+function setRun(S,keepTitle){RUN=S;state.mode='single';S.sport=state.sportSel==='auto'?S.sportAuto:state.sportSel;if(!keepTitle){state.title=autoTitle(S);state.titleAuto=true;}
   if(state.color==='hr'&&!S.hasHR)state.color=S.hasTime?'pace':'none';
   $('#runchip').innerHTML=`<span>${S.start?esc(S.start.toLocaleDateString('de-DE')):''}${S.start?' · ':''}${num(S.dist/1000,2)} km${S.hasTime?' · '+dur(S.durationRaw):''}</span>`;
   syncAll();if(state.map)loadMap();schedule(true);}
 function setColl(){state.mode='coll';state.title=COLL.title;HIT=null;setMarkMode(false);
-  $('#runchip').innerHTML=`<span>${COLL.runs.length} Läufe · ${num(COLL.dist/1000,0)} km</span>`;syncAll();if(state.map&&state.view==='heat')loadMap();schedule(true);}
-function newRunState(){state.marks=[];state.rank='';state.bibno='';state.offtime='';state.rot=0;state.photo=null;}
+  $('#runchip').innerHTML=`<span>${COLL.runs.length} ${COLL.words.many} · ${num(COLL.dist/1000,0)} km</span>`;syncAll();if(state.map&&state.view==='heat')loadMap();schedule(true);}
+function setSport(k){state.sportSel=k;if(!RUN)return;RUN.sport=k==='auto'?RUN.sportAuto:k;if(state.titleAuto){state.title=autoTitle(RUN);}if(state.color==='pace'&&!RUN.hasTime)state.color='none';syncAll();}
+const libWords=()=>{const s=[...new Set(LIB.map(S=>S.sportAuto))];return s.length===1?SPORTS[s[0]]:MIXED;};
+function newRunState(){state.sportSel='auto';state.marks=[];state.rank='';state.bibno='';state.offtime='';state.rot=0;state.photo=null;}
 /* Alle geladenen Läufe bleiben in einer Liste; neue Dateien kommen dazu. */
 let LIB=[],COLLKEY='all';
 const runKey=S=>`${S.fileName}|${S.start?S.start.getTime():''}|${Math.round(S.dist)}`;
-const runLabel=S=>`${S.start?S.start.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})+' · ':''}${S.fileName.replace(/\.gpx$/i,'')} · ${num(S.dist/1000,1)} km`;
-function collFor(key){const runs=key==='all'?LIB.slice():LIB.filter(S=>S.start&&S.start.getFullYear()===+key);return runs.length>1?buildCollection(runs):null;}
+const runLabel=S=>`${new Set(LIB.map(x=>x.sportAuto)).size>1?SPORTS[S.sportAuto].label+' · ':''}${S.start?S.start.toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'})+' · ':''}${S.fileName.replace(/\.gpx$/i,'')} · ${num(S.dist/1000,1)} km`;
+function collFor(key){const runs=key==='all'?LIB.slice():LIB.filter(S=>S.start&&S.start.getFullYear()===+key);runs.forEach(S=>S.sport=S.sportAuto);return runs.length>1?buildCollection(runs):null;}
 function fillRunPick(sel){const el=$('#runpick'),years={};
   LIB.forEach(S=>{if(S.start){const y=S.start.getFullYear();years[y]=(years[y]||0)+1;}});
   const ys=Object.keys(years).filter(y=>years[y]>1).sort();
   let html='';
-  if(LIB.length>1){html+=`<optgroup label="Jahresposter"><option value="coll:all">Alle ${LIB.length} Läufe</option>`;
-    if(ys.length>1||(ys.length===1&&years[ys[0]]<LIB.length))html+=ys.map(y=>`<option value="coll:${y}">Laufjahr ${y} · ${years[y]} Läufe</option>`).join('');html+='</optgroup>';}
-  html+=`<optgroup label="Einzelne Läufe">`+LIB.map((S,i)=>`<option value="run:${i}">${esc(runLabel(S))}</option>`).join('')+'</optgroup>';
+  const w=libWords();
+  if(LIB.length>1){html+=`<optgroup label="Jahresposter"><option value="coll:all">Alle ${LIB.length} ${w.many}</option>`;
+    if(ys.length>1||(ys.length===1&&years[ys[0]]<LIB.length))html+=ys.map(y=>`<option value="coll:${y}">${w.year} ${y} · ${years[y]} ${w.many}</option>`).join('');html+='</optgroup>';}
+  html+=`<optgroup label="Einzeln">`+LIB.map((S,i)=>`<option value="run:${i}">${esc(runLabel(S))}</option>`).join('')+'</optgroup>';
   el.innerHTML=html;el.value=sel;$('#runpickwrap').hidden=LIB.length<2;
   $('#rundel').hidden=LIB.length<2||!String(sel).startsWith('run:');
   $('#fileline').innerHTML=LIB.length===1?`Geladen: <strong>${esc(LIB[0].fileName)}</strong> · ${LIB[0].points.toLocaleString('de-DE')} Punkte`+(LIB[0].hasTime?'':' · ohne Zeitstempel')+(LIB[0].hasHR?' · mit Puls':'')
-    :`<strong>${LIB.length} Läufe</strong> in der Liste · ${num(LIB.reduce((a,S)=>a+S.dist,0)/1000,0)} km`;}
+    :`<strong>${LIB.length} ${w.many}</strong> in der Liste · ${num(LIB.reduce((a,S)=>a+S.dist,0)/1000,0)} km`;}
 function showRun(S){newRunState();fillRunPick('run:'+LIB.indexOf(S));setRun(S);}
 function showColl(key){const G=collFor(key);if(!G){showRun(LIB[LIB.length-1]);return;}COLL=G;COLLKEY=key;newRunState();RUN=G.runs[G.runs.length-1];fillRunPick('coll:'+key);setColl();}
 async function readFiles(files){
@@ -205,11 +215,11 @@ async function readFiles(files){
   for(const S of runs){const k=runKey(S),old=LIB.find(x=>runKey(x)===k);if(old){dup++;added.push(old);}else{LIB.push(S);added.push(S);}}
   LIB.sort((x,y)=>(x.start?x.start.getTime():Infinity)-(y.start?y.start.getTime():Infinity));
   if(runs.length===1)showRun(added[0]);else showColl('all');
-  const msg=[];if(dup)msg.push(`${dup} Lauf/Läufe war(en) schon in der Liste`);if(errs.length)msg.push(`${errs.length} Datei(en) nicht lesbar: ${errs.slice(0,3).join(', ')}`);
-  toast(msg.length?msg.join(' · '):runs.length===1?(LIB.length>1?`Lauf hinzugefügt · ${LIB.length} Läufe in der Liste`:'Neue Strecke geladen.'):`${runs.length} Läufe hinzugefügt`);
+  const msg=[];if(dup)msg.push(`${dup} davon war(en) schon in der Liste`);if(errs.length)msg.push(`${errs.length} Datei(en) nicht lesbar: ${errs.slice(0,3).join(', ')}`);
+  toast(msg.length?msg.join(' · '):runs.length===1?(LIB.length>1?`Hinzugefügt · ${LIB.length} ${libWords().many} in der Liste`:'Neue Strecke geladen.'):`${runs.length} ${libWords().many} hinzugefügt`);
 }
 $('#runpick').onchange=e=>{const[t,v]=e.target.value.split(':');if(t==='coll')showColl(v);else showRun(LIB[+v]);};
-$('#rundel').onclick=()=>{const i=LIB.indexOf(RUN);if(i<0||LIB.length<2)return;LIB.splice(i,1);toast('Lauf aus der Liste entfernt.');showRun(LIB[Math.min(i,LIB.length-1)]);};
+$('#rundel').onclick=()=>{const i=LIB.indexOf(RUN);if(i<0||LIB.length<2)return;LIB.splice(i,1);toast('Aus der Liste entfernt.');showRun(LIB[Math.min(i,LIB.length-1)]);};
 
 /* ---- Karte ---- */
 async function loadMap(){
@@ -294,7 +304,7 @@ $('#size').onchange=e=>{state.size=+e.target.value;fillSizes();schedule();};
 let tt;function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3600);}
 
 /* ================= Eingaben ================= */
-for(const k of ['title','sub','name','rank','bibno','offtime'])$('#'+k).oninput=e=>{state[k]=e.target.value;if(k==='offtime')offHint();if(k==='rank'||k==='bibno')syncChips();schedule();};
+for(const k of ['title','sub','name','rank','bibno','offtime'])$('#'+k).oninput=e=>{state[k]=e.target.value;if(k==='title')state.titleAuto=false;if(k==='offtime')offHint();if(k==='rank'||k==='bibno')syncChips();schedule();};
 $('#privacy').oninput=e=>{state.privacy=+e.target.value;$('#privacyval').textContent=state.privacy?state.privacy+' m':'aus';schedule();};
 $('#rot').oninput=e=>{state.rot=+e.target.value;$('#rotval').textContent=state.rot+'°';schedule();};
 $('#rotauto').onchange=e=>{state.rotAuto=e.target.checked;syncAll();schedule();};

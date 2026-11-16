@@ -31,11 +31,12 @@ def sample(path):
         tt = int((iso(t) - t0).total_seconds())
         d += [la - pl, lo - pa, e - pe, tt - pt] + ([int(hr)] if has_hr else []); pl, pa, pe, pt = la, lo, e, tt
     meta = {k: float(v) for k, v in re.findall(r'<(totalTime|totalDistance|cumulativeClimb)>([\d.]+)<', s)}
-    return {'t0': pts[0][3], 'd': d, 'hr': has_hr, 'meta': meta, 'file': path.name}
+    typ = re.search(r'<trk>.*?<type>([^<]*)</type>', s, re.S)
+    return {'t0': pts[0][3], 'd': d, 'hr': has_hr, 'meta': meta, 'file': path.name, 'type': typ.group(1) if typ else ''}
 
 fonts = {k: base64.b64encode((ROOT / 'fonts' / f'{k}.woff2').read_bytes()).decode() for k in ['anyN', 'anyI', 'chivo', 'hanken']}
 read = lambda n: (PARTS / n).read_text(encoding='utf-8')
-script = '\n'.join(read(n) for n in ['core.js', 'draw.js', 'templates.js', 'app.js'])
+script = '\n'.join(read(n) for n in ['core.js', 'sports.js', 'draw.js', 'templates.js', 'app.js'])
 body = read('head.html') + '\n' + read('markup.html') + '\n<script>\n' + script + '</script>\n'
 body = body.replace('__FONTS__', json.dumps(fonts)).replace('__SAMPLE__', json.dumps(sample(gpx), separators=(',', ':')))
 if '--fragment' in sys.argv:

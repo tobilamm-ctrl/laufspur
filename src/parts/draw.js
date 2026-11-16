@@ -80,7 +80,7 @@ function routeLayer(C,box,st,mapR){
   const placed=[];
   const place=(x,y)=>{let yy=y;for(let g=0;g<6&&placed.some(([px,py])=>Math.abs(px-x)<70&&Math.abs(py-yy)<22);g++)yy+=22;placed.push([x,yy]);return yy;};
   const kw=Math.max(w,4);
-  if(o.km){S.kmIdx.forEach((i,k)=>{if(i<a||i>b)return;const[x,y]=P(i),km=k+1,big=km%5===0;
+  if(o.km){markers(S).forEach(({i,km,big})=>{if(i<a||i>b)return;const[x,y]=P(i);
     out+=`<circle cx="${r1(x)}" cy="${r1(y)}" r="${r1(big?kw*1.05:kw*0.62)}" fill="${st.mk.fill}" stroke="${st.mk.stroke}" stroke-width="${big?3:2}"/>`;
     if(big)out+=`<text x="${r1(x+kw+8)}" y="${r1(place(x+kw+8,y-kw-6))}" ${fa(MONO,19)} fill="${st.mk.text}" stroke="${st.mk.halo}" stroke-width="5" paint-order="stroke" stroke-linejoin="round">${km}</text>`;});}
   if(o.ends){const[sx,sy]=P(a),[ex,ey]=P(b),close=Math.hypot(sx-ex,sy-ey)<90;
@@ -104,8 +104,8 @@ function routeLayer(C,box,st,mapR){
 function lbl(x,y,t,st){return `<text x="${r1(x)}" y="${r1(y)}" text-anchor="middle" ${fa(MONO,14)} letter-spacing="2" fill="${st.mk.text}" stroke="${st.mk.halo}" stroke-width="5" paint-order="stroke">${t}</text>`;}
 
 /* ---- Diagramme ---- */
-const GRAPHS=[['profile','Höhenprofil'],['pace','Pace-Kurve'],['hr','Puls-Kurve'],['splits','Km-Splits']];
-const graphOk=(S,g)=>g==='profile'?S.hasEle:g==='pace'?S.hasTime:g==='hr'?S.hasHR:S.splits.length>1;
+const GRAPHS=[['profile','Höhenprofil'],['pace','Tempo-Kurve'],['hr','Puls-Kurve'],['splits','Abschnitte']];
+const graphOk=(S,g)=>g==='profile'?S.hasEle:g==='pace'?S.hasTime:g==='hr'?S.hasHR:seg(S).times.length>1;
 function graphList(C){return GRAPHS.map(g=>g[0]).filter(g=>C.o.graphs.includes(g)&&graphOk(C.S,g));}
 function graphs(C,box,st){const L=graphList(C);if(!L.length)return '';const gap=18,h=(box.h-gap*(L.length-1))/L.length;let out='';
   L.forEach((g,i)=>{const b={x:box.x,y:box.y+i*(h+gap),w:box.w,h};out+=({profile:gProfile,pace:gPace,hr:gHR,splits:gSplits})[g](C,b,st);});return out;}
@@ -124,18 +124,19 @@ function curveBand(C,b,st,vals,lo,hi,colored,head,right,key){const S=C.S,top=b.y
   return bandHead(b,head,right,st)+
     (colored&&st.ramp?`<defs><linearGradient id="${gid}" x1="0" x2="1" y1="0" y2="0">${stops}</linearGradient></defs><path d="${area}" fill="url(#${gid})"${bl(st)}/>`
             :`<path d="${area}" fill="${st.fill}" fill-opacity="${st.fillOp}"${bl(st)}/><path d="${line}" fill="none" stroke="${st.line}" stroke-width="2.5" stroke-linejoin="round"${bl(st)}/>`);}
-function gPace(C,b,st){const S=C.S;return curveBand(C,b,st,S.speedG,S.lo,S.hi,C.o.color==='pace','PACE',`Ø ${pace(S.duration/(S.dist/1000))} /km`,'pg');}
+function gPace(C,b,st){const S=C.S;return curveBand(C,b,st,S.speedG,S.lo,S.hi,C.o.color==='pace',isPace(S)?'PACE':'TEMPO',`Ø ${fmtVs(S,S.dist/S.duration)}`,'pg');}
 function gHR(C,b,st){const S=C.S;return curveBand(C,b,st,S.hrS,S.hrLo,S.hrHi,C.o.color==='hr','PULS',`Ø ${Math.round(S.hrAvg)} · max. ${Math.round(S.hrMax)} bpm`,'hg');}
-function gSplits(C,b,st){const S=C.S,sp=S.splits,n=sp.length,top=b.y+44,bot=b.y+b.h-18,hh=bot-top,slot=b.w/n,bw=slot*0.68;
-  const v=sp.map(s=>1000/s),vmin=Math.min(...v),vmax=Math.max(...v);let out=bandHead(b,'KM-SPLITS',`schnellster: km ${S.bestKm} · ${pace(S.best)} /km`,st);
-  sp.forEach((s,i)=>{const h=hh*(0.18+0.82*(v[i]-vmin)/((vmax-vmin)||1)),x=b.x+i*slot+(slot-bw)/2,isB=i+1===S.bestKm;
+function gSplits(C,b,st){const S=C.S,G=seg(S),sp=G.times,n=sp.length,top=b.y+44,bot=b.y+b.h-18,hh=bot-top,slot=b.w/n,bw=slot*0.68,lab=(G.len/1000)*(n>12?5:1);
+  const v=sp.map(s=>G.len/s),vmin=Math.min(...v),vmax=Math.max(...v);let out=bandHead(b,G.len===1000?'KM-SPLITS':`ABSCHNITTE JE ${G.name.toUpperCase()}`,`schnellster: ${G.label(G.bestK)} · ${fmtVs(S,G.len/G.best)}`,st);
+  sp.forEach((s,i)=>{const h=hh*(0.18+0.82*(v[i]-vmin)/((vmax-vmin)||1)),x=b.x+i*slot+(slot-bw)/2,isB=i+1===G.bestK,kmEnd=(i+1)*G.len/1000;
     out+=`<rect x="${r1(x)}" y="${r1(bot-h)}" width="${r1(bw)}" height="${r1(h)}" fill="${isB?st.best:st.bar}" fill-opacity="${isB?1:st.barOp}"${bl(st)}/>`;
-    if((i+1)%5===0||i===0)out+=`<text x="${r1(x+bw/2)}" y="${r1(bot+15)}" text-anchor="middle" ${fa({fam:'m',w:400},12)} fill="${st.label}">${i+1}</text>`;
-    if(isB)out+=`<text x="${r1(x+bw/2)}" y="${r1(bot-h-7)}" text-anchor="middle" ${fa(MONO,14)} fill="${st.best}">${pace(s)}</text>`;});
+    if(Math.abs(kmEnd/lab-Math.round(kmEnd/lab))<1e-6||i===0)out+=`<text x="${r1(x+bw/2)}" y="${r1(bot+15)}" text-anchor="middle" ${fa({fam:'m',w:400},12)} fill="${st.label}">${kmEnd}</text>`;
+    if(isB)out+=`<text x="${r1(x+bw/2)}" y="${r1(bot-h-7)}" text-anchor="middle" ${fa(MONO,14)} fill="${st.best}">${fmtV(S,G.len/s)[0]}</text>`;});
   return out;}
 
 /* ---- Kennzahlen ---- */
-const statItems=(S,keys)=>keys.filter(k=>statOk(S,k)).map(k=>{const[v,u]=STATS[k].val(S);return {label:STATS[k].label,v,u};});
+const statLabel=(S,k)=>STATS[k].lab?STATS[k].lab(S):STATS[k].label;
+const statItems=(S,keys)=>keys.filter(k=>statOk(S,k)).map(k=>{const[v,u]=STATS[k].val(S);return {label:statLabel(S,k),v,u};});
 function itemsRow(box,items,st){if(!items.length)return '';
   const n=items.length,cols=n<=4?n:Math.ceil(n/2),rows=Math.ceil(n/cols),cw=box.w/cols,ch=box.h/rows;
   const vf={fam:'d',w:800,it:st.italic!==false,st:st.stretch||100},uf={fam:'b',w:600};let out='';
