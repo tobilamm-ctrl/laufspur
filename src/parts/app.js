@@ -69,8 +69,8 @@ function cleanPreset(p){const o={};if(!p||typeof p!=='object')return o;
   if(COLLVIEWS[p.view])o.view=p.view;
   return o;}
 const presetOf=()=>{const o={};for(const k of PRESET_KEYS)o[k]=structuredClone(state[k]);return o;};
-try{Object.assign(state,cleanPreset(JSON.parse(localStorage.getItem('laufspur-einstellungen')||'null')));}catch(e){}
-let saveT;function remember(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem('laufspur-einstellungen',JSON.stringify(presetOf()));}catch(e){}},400);}
+try{Object.assign(state,cleanPreset(JSON.parse(localStorage.getItem('spurwerk-einstellungen')||localStorage.getItem('laufspur-einstellungen')||'null')));}catch(e){}
+let saveT;function remember(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem('spurwerk-einstellungen',JSON.stringify(presetOf()));}catch(e){}},400);}
 
 /* ================= Rendern ================= */
 const cur=()=>state.mode==='coll'?COLL:RUN;
@@ -132,11 +132,11 @@ function buildUI(){
   chipGroup('#statchips',Object.keys(STATS).map(k=>({id:'st-'+k,label:STATS[k].label,dyn:()=>RUN?statLabel(RUN,k):STATS[k].label,get:()=>SL().includes(k),
     set:v=>{state.statsBy[RUN.sport]=Object.keys(STATS).filter(x=>x===k?v:SL().includes(x));},ok:()=>single()&&statOk(RUN,k)})));
   chipGroup('#elchips',[
-    ['pace','Pace-Farben',()=>single()&&RUN.hasTime,()=>state.color==='pace',v=>{state.color=v?'pace':'none';},()=>RUN&&!isPace(RUN)?'Tempo-Farben':'Pace-Farben'],
-    ['hrc','Puls-Farben',()=>single()&&RUN.hasHR,()=>state.color==='hr',v=>{state.color=v?'hr':'none';}],
+    ['pace','Pace-Farben',()=>single()&&RUN.hasTime&&!TEMPLATES[state.tpl].noColor,()=>state.color==='pace',v=>{state.color=v?'pace':'none';},()=>RUN&&!isPace(RUN)?'Tempo-Farben':'Pace-Farben'],
+    ['hrc','Puls-Farben',()=>single()&&RUN.hasHR&&!TEMPLATES[state.tpl].noColor,()=>state.color==='hr',v=>{state.color=v?'hr':'none';}],
     ['echo','Tempo-Echo',()=>single()&&!TEMPLATES[state.tpl].noEcho],
     ['km','Kilometermarken',single],['ends','Start & Ziel',single],
-    ['map','Kartengrundlage',()=>single()||state.view==='heat',null,v=>{state.map=v;if(v)loadMap();mapStatus();}]
+    ['map','Kartengrundlage',()=>single()?!TEMPLATES[state.tpl].noMap:state.view==='heat',null,v=>{state.map=v;if(v)loadMap();mapStatus();}]
   ].map(([k,l,ok,get,set,dyn])=>({id:'el-'+k,label:l,ok,dyn,get:get||(()=>state[k]),set:set||(v=>{state[k]=v;})})));
   const GL={pace:()=>RUN&&isPace(RUN)?'Pace-Kurve':'Tempo-Kurve',splits:()=>RUN&&seg(RUN).len===1000?'Km-Splits':`Abschnitte (${RUN?seg(RUN).name:'km'})`};
   chipGroup('#graphchips',GRAPHS.map(([k,l])=>({id:'gr-'+k,label:l,dyn:GL[k]||null,get:()=>state.graphs.includes(k),
@@ -258,10 +258,10 @@ $('#col-fg').oninput=e=>setColor('fg',e.target.value.toUpperCase());
 $('#col-reset').onclick=()=>{delete state.colors[state.tpl];syncAll();schedule();};
 
 /* ---- Einstellungen als Datei ---- */
-$('#presetsave').onclick=()=>saveFile('laufspur-einstellungen.json',new Blob([JSON.stringify({app:'Laufspur',version:1,einstellungen:presetOf()},null,2)],{type:'application/json'}));
+$('#presetsave').onclick=()=>saveFile('spurwerk-einstellungen.json',new Blob([JSON.stringify({app:'Spurwerk',version:1,einstellungen:presetOf()},null,2)],{type:'application/json'}));
 async function loadPresetFile(f){try{const j=JSON.parse(await f.text()),p=cleanPreset(j&&j.einstellungen);
     if(!Object.keys(p).length)throw 0;Object.assign(state,p);syncAll();schedule(true);toast('Einstellungen geladen.');}
-  catch(e){toast(`${f.name} ist keine Laufspur-Einstellungsdatei.`);}}
+  catch(e){toast(`${f.name} ist keine Spurwerk-Einstellungsdatei.`);}}
 $('#presetfile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)loadPresetFile(f);};
 $('#presetreset').onclick=()=>{Object.assign(state,structuredClone(DEFAULTS));syncAll();schedule(true);toast('Einstellungen zurückgesetzt.');};
 
@@ -277,7 +277,7 @@ async function saveFile(name,blob){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);toast('Gespeichert: '+name);
 }
-function baseName(){const S=cur(),d=state.mode==='coll'?'jahr':(S.start?S.start.toISOString().slice(0,10):'lauf');return `laufspur-${d}-${state.tpl}`;}
+function baseName(){const S=cur(),d=state.mode==='coll'?'jahr':(S.start?S.start.toISOString().slice(0,10):'lauf');return `spurwerk-${d}-${state.tpl}`;}
 async function rasterize(svgStr,w,h){const url=URL.createObjectURL(new Blob([svgStr],{type:'image/svg+xml'}));
   try{const img=new Image();img.src=url;await img.decode();const cv=document.createElement('canvas');cv.width=w;cv.height=h;
     const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);return cv;}finally{URL.revokeObjectURL(url);}}
@@ -296,7 +296,7 @@ $('#pdfbtn').onclick=()=>busy($('#pdfbtn'),async()=>{const sz=sizeList(state.fmt
     const w=Math.round(mw/25.4*300),h=Math.round(mh/25.4*300),cv=await rasterize(renderSVG(state.tpl,'x',{bleed}),w,h);
     const doc=new lib.jsPDF({unit:'mm',format:[mw,mh],orientation:mw>mh?'l':'p',compress:true});
     doc.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,mw,mh);
-    doc.setProperties({title:`Laufspur · ${state.title}`,subject:`Endformat ${sz.mm[0]} × ${sz.mm[1]} mm, 3 mm Beschnitt rundum`});
+    doc.setProperties({title:`Spurwerk · ${state.title}`,subject:`Endformat ${sz.mm[0]} × ${sz.mm[1]} mm, 3 mm Beschnitt rundum`});
     await saveFile(`${baseName()}-${sz.mm[0]}x${sz.mm[1]}mm-beschnitt.pdf`,doc.output('blob'));}
   catch(e){toast(e&&e.message==='jspdf'?'Die PDF-Bibliothek konnte nicht geladen werden. Ist das Gerät online?':'Das PDF konnte nicht erzeugt werden. Versuche eine kleinere Größe.');}});
 $('#size').onchange=e=>{state.size=+e.target.value;fillSizes();schedule();};

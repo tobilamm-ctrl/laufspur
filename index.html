@@ -1,4 +1,4 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>Laufspur</title>
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body><title>Spurwerk</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /* Layout: schräges Bahnrot-Band oben, darunter Werkbank (Steuerung links, Poster auf der Bahn rechts) */
@@ -166,7 +166,7 @@ button,input,select{font:inherit;color:inherit}
 
 <header class="mast">
   <div class="mast-in">
-    <h1 class="logo"><span class="speed" aria-hidden="true"><i></i><i></i><i></i></span>LAUFSPUR</h1>
+    <h1 class="logo"><span class="speed" aria-hidden="true"><i></i><i></i><i></i></span>SPURWERK</h1>
     <p class="tag">GPX rein. Poster raus.</p>
     <div class="run" id="runchip"><span>Lauf wird geladen …</span></div>
   </div>
@@ -180,7 +180,7 @@ button,input,select{font:inherit;color:inherit}
       <div class="drop">
         <label class="btn btn-primary btn-small" for="gpx"><span>GPX-Dateien wählen</span></label>
         <input type="file" id="gpx" multiple accept=".gpx,application/gpx+xml,application/xml,text/xml">
-        <span class="hint">Jede Datei kommt in deine Lauf-Liste. Ab zwei Läufen gibt es das Jahresposter. Du kannst die Dateien auch auf das Poster ziehen.</span>
+        <span class="hint">Jede Datei kommt in deine Liste. Ab zwei Läufen gibt es das Jahresposter. Du kannst die Dateien auch auf das Poster ziehen.</span>
         <div class="file-line" id="fileline"></div>
       </div>
       <div class="field single-only">
@@ -990,6 +990,69 @@ const TEMPLATES={
       } else if(!S.hasEle)s+=`<text x="${m}" y="${r1(pyTop+40)}" ${fa({fam:'b',w:600},20)} fill="${L.label}">Diese Datei enthält keine Höhendaten.</text>`;
       return s+top.svg+bot.svg;}},
 
+  /* --- Linienplan: Strecke als U-Bahn-Plan, Kilometer und Markierungen als Haltestellen --- */
+  metro:{name:'Linienplan',blurb:'Strecke als U-Bahn-Plan, Kilometer als Haltestellen',noEcho:true,noColor:true,noMap:true,pal:{bg:'#FFFFFF',fg:'#E4032E'},fgLabel:'Linienfarbe',
+    defaults:{echo:false,color:'none',graphs:[]},
+    look(C,P){const{id}=C,INK='#1D1D1B';
+      const back=`<defs><pattern id="${id}-grid" patternUnits="userSpaceOnUse" width="40" height="40"><circle cx="20" cy="20" r="1.4" fill="${INK}" fill-opacity=".12"/></pattern></defs>
+        <rect ${bgr(C)} fill="${P.bg}"/><rect ${bgr(C)} fill="url(#${id}-grid)"/>`;
+      return {back,dark:false,INK,ink:INK,label:rgba(INK,.6),sep:rgba(INK,.18),eyebrow:rgba(INK,.7),sub:rgba(INK,.8),accent:P.fg,heat:P.fg,
+        title:{font:{fam:'d',w:900,it:false,st:75},max:170,fill:INK},stretch:100,italic:false,halo:P.bg,
+        map:{line:INK,water:'#3A8DDE',green:'#4CAF50',op:.5,text:rgba(INK,.6)}};},
+    render(C){const{W,H,S,o,id}=C,P=pal(C,'metro'),L=this.look(C,P),m=70,INK=L.INK,cw=W-2*m;
+      let s=L.back;
+      // Kopf wie ein Bahnsteigschild
+      const bandH=H<1100?190:230,km=Math.round(S.dist/1000),badge=bandH-96;
+      s+=`<rect x="-60" y="-60" width="${W+120}" height="${bandH+60}" fill="${INK}"/>`;
+      s+=`<text x="${m}" y="58" ${fa(MONO,15)} letter-spacing="3" fill="rgba(255,255,255,.7)">${esc(eyebrow(S))}</text>`;
+      if(o.name)s+=`<text x="${W-m}" y="58" text-anchor="end" ${fa(MONO,15)} letter-spacing="3" fill="rgba(255,255,255,.7)">${esc(o.name.toUpperCase())}</text>`;
+      s+=`<rect x="${m}" y="78" width="${badge}" height="${badge}" rx="${r1(badge*0.18)}" fill="${P.fg}"/>`;
+      const bf={fam:'d',w:900,st:75},bs=fit(String(km),bf,badge*0.78,badge*0.62);
+      s+=`<text x="${r1(m+badge/2)}" y="${r1(78+badge/2+bs*0.36)}" text-anchor="middle" ${fa(bf,bs)} fill="#fff">${km}</text>`;
+      const tx=m+badge+26,tt=(o.title||' ').toUpperCase(),tf={fam:'d',w:900,st:75},ts=fit(tt,tf,W-m-tx,badge*(o.sub?0.6:0.78));
+      s+=`<text x="${tx}" y="${r1(78+(o.sub?ts*0.8:badge/2+ts*0.36))}" ${fa(tf,ts)} fill="#fff">${esc(tt)}</text>`;
+      if(o.sub)s+=`<text x="${tx}" y="${r1(78+badge-8)}" ${fa({fam:'b',w:600},24)} fill="rgba(255,255,255,.8)">${esc(o.sub)}</text>`;
+      // unten: Kennzahlen als Fahrplan
+      const bot=bottomBlock(C,{stats:{label:L.label,value:INK,sep:L.sep,stretch:100,italic:false},graph:{label:L.label,fill:P.fg,fillOp:.25,line:P.fg,bar:INK,barOp:.8,best:P.fg,ramp:[INK,P.fg]}});
+      // Linie: vereinfachen und auf 45°-Winkel bringen
+      const y0=bandH+60,y1=bot.top-50,box={x:m+70,y:y0,w:cw-140,h:Math.max(120,y1-y0)};
+      const[a,b]=trimmed(C),T=fitBox(S,a,b,box,o.rot,o.rotAuto),raw=[];for(let i=a;i<=b;i++)raw.push([...T.P(i),S.d[i]]);
+      const simp=rdp(raw,Math.max(box.w,box.h)*0.045);
+      const line=[[simp[0][0],simp[0][1],simp[0][2]]];
+      for(let k=1;k<simp.length;k++){const[ax,ay]=line[line.length-1],[bx,by,bd]=simp[k],dx=bx-ax,dy=by-ay;
+        if(Math.abs(dx)>Math.abs(dy)){if(Math.abs(dy)>2)line.push([ax+Math.sign(dx)*Math.abs(dy),by,null]);}else{if(Math.abs(dx)>2)line.push([bx,ay+Math.sign(dy)*Math.abs(dx),null]);}
+        line.push([bx,by,bd]);}
+      // Länge entlang der Linie; Haltestellen proportional zur echten Distanz
+      const cum=[0];for(let k=1;k<line.length;k++)cum.push(cum[k-1]+Math.hypot(line[k][0]-line[k-1][0],line[k][1]-line[k-1][1]));
+      const Ltot=cum[cum.length-1]||1,d0=S.d[a],dspan=(S.d[b]-d0)||1;
+      const at=f=>{const t=clamp(f,0,1)*Ltot;let k=1;while(k<cum.length-1&&cum[k]<t)k++;const q=(t-cum[k-1])/((cum[k]-cum[k-1])||1),A=line[k-1],B=line[k];
+        const x=A[0]+(B[0]-A[0])*q,y=A[1]+(B[1]-A[1])*q,Ld=Math.hypot(B[0]-A[0],B[1]-A[1])||1;return {x,y,nx:-(B[1]-A[1])/Ld,ny:(B[0]-A[0])/Ld};};
+      const lw=14;
+      s+=`<path d="${pathD(line.map(p=>[p[0],p[1]]))}" fill="none" stroke="${P.fg}" stroke-width="${lw}" stroke-linecap="round" stroke-linejoin="round"/>`;
+      const stops=[];
+      if(o.km)markers(S).filter(q=>q.big&&S.d[q.i]>d0+150&&S.d[q.i]<S.d[b]-150).forEach(q=>stops.push({f:(S.d[q.i]-d0)/dspan,name:`km ${q.km}`,kind:'km'}));
+      (o.marks||[]).forEach(mk=>{if(mk.text.trim()&&mk.d>d0&&mk.d<S.d[b])stops.push({f:(mk.d-d0)/dspan,name:mk.text.trim(),kind:'mark'});});
+      const st=S.start?S.start.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'',en=S.start&&S.hasTime?new Date(S.start.getTime()+S.duration*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';
+      const pS=at(0),pZ=at(1);
+      if(Math.hypot(pS.x-pZ.x,pS.y-pZ.y)<60){stops.push({f:0,name:`Start ${st} · Ziel ${en}`.replace(/\s+·\s+Ziel\s*$/,' · Ziel').trim(),kind:'end'});
+        s+=`<circle cx="${r1(pZ.x)}" cy="${r1(pZ.y)}" r="13" fill="#fff" stroke="${INK}" stroke-width="6"/>`;}
+      else stops.push({f:0,name:`Start${st?' '+st:''}`,kind:'end'},{f:1,name:`Ziel${en?' '+en:''}`,kind:'end'});
+      const boxes=[];
+      const lim=[box.x-60,box.y-30,box.x+box.w+60,box.y+box.h+30],out=bx=>bx[0]<lim[0]||bx[1]<lim[1]||bx[2]>lim[2]||bx[3]>lim[3];
+      const hits=(bx)=>out(bx)||boxes.some(q=>bx[0]<q[2]&&bx[2]>q[0]&&bx[1]<q[3]&&bx[3]>q[1])||line.some((p2,k)=>k&&segHit(line[k-1],p2,bx));
+      const segHit=(A,B,bx)=>{for(let t=0;t<=1;t+=0.1){const x=A[0]+(B[0]-A[0])*t,y=A[1]+(B[1]-A[1])*t;if(x>bx[0]-lw/2&&x<bx[2]+lw/2&&y>bx[1]-lw/2&&y<bx[3]+lw/2)return true;}return false;};
+      stops.sort((x,y)=>x.f-y.f).forEach(q=>{const p=at(q.f),end=q.kind==='end',r=end?13:9,fs=end?22:18,f={fam:'b',w:end?800:q.kind==='mark'?700:600};
+        boxes.push([p.x-r,p.y-r,p.x+r,p.y+r]);
+        const tw=measure(q.name,f)*fs/100,g=r+10,cands=[[p.nx,p.ny],[-p.nx,-p.ny],[1,0],[-1,0],[0,-1],[0,1],[.7,-.7],[-.7,-.7],[.7,.7],[-.7,.7]];
+        let best=null;
+        for(const dist of [1,1.6])for(const[nx,ny]of cands){const cx=p.x+nx*(g+tw/2*Math.abs(nx))*dist,cy=p.y+ny*(g+fs*0.45)*dist;
+          const bx=[cx-tw/2-3,cy-fs*0.55,cx+tw/2+3,cy+fs*0.55];if(!hits(bx)){best=[cx,cy,bx];break;}if(best)break;}
+        if(!best){const nx=p.nx,ny=p.ny,cx=clamp(p.x+nx*(g+tw/2*Math.abs(nx)),lim[0]+tw/2,lim[2]-tw/2),cy=clamp(p.y+ny*(g+fs*0.45),lim[1]+fs,lim[3]-fs);best=[cx,cy,[cx-tw/2,cy-fs*0.55,cx+tw/2,cy+fs*0.55]];}
+        boxes.push(best[2]);
+        s+=`<circle cx="${r1(p.x)}" cy="${r1(p.y)}" r="${r}" fill="#fff" stroke="${INK}" stroke-width="${end?6:4}"/>`;
+        s+=`<text x="${r1(best[0])}" y="${r1(best[1]+fs*0.35)}" text-anchor="middle" ${fa(f,fs)} fill="${INK}" stroke="${P.bg}" stroke-width="5" paint-order="stroke">${esc(q.name)}</text>`;});
+      return s+bot.svg;}},
+
 };
 
 /* ================= Jahresposter: Kacheln und Heatmap ================= */
@@ -1111,8 +1174,8 @@ function cleanPreset(p){const o={};if(!p||typeof p!=='object')return o;
   if(COLLVIEWS[p.view])o.view=p.view;
   return o;}
 const presetOf=()=>{const o={};for(const k of PRESET_KEYS)o[k]=structuredClone(state[k]);return o;};
-try{Object.assign(state,cleanPreset(JSON.parse(localStorage.getItem('laufspur-einstellungen')||'null')));}catch(e){}
-let saveT;function remember(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem('laufspur-einstellungen',JSON.stringify(presetOf()));}catch(e){}},400);}
+try{Object.assign(state,cleanPreset(JSON.parse(localStorage.getItem('spurwerk-einstellungen')||localStorage.getItem('laufspur-einstellungen')||'null')));}catch(e){}
+let saveT;function remember(){clearTimeout(saveT);saveT=setTimeout(()=>{try{localStorage.setItem('spurwerk-einstellungen',JSON.stringify(presetOf()));}catch(e){}},400);}
 
 /* ================= Rendern ================= */
 const cur=()=>state.mode==='coll'?COLL:RUN;
@@ -1174,11 +1237,11 @@ function buildUI(){
   chipGroup('#statchips',Object.keys(STATS).map(k=>({id:'st-'+k,label:STATS[k].label,dyn:()=>RUN?statLabel(RUN,k):STATS[k].label,get:()=>SL().includes(k),
     set:v=>{state.statsBy[RUN.sport]=Object.keys(STATS).filter(x=>x===k?v:SL().includes(x));},ok:()=>single()&&statOk(RUN,k)})));
   chipGroup('#elchips',[
-    ['pace','Pace-Farben',()=>single()&&RUN.hasTime,()=>state.color==='pace',v=>{state.color=v?'pace':'none';},()=>RUN&&!isPace(RUN)?'Tempo-Farben':'Pace-Farben'],
-    ['hrc','Puls-Farben',()=>single()&&RUN.hasHR,()=>state.color==='hr',v=>{state.color=v?'hr':'none';}],
+    ['pace','Pace-Farben',()=>single()&&RUN.hasTime&&!TEMPLATES[state.tpl].noColor,()=>state.color==='pace',v=>{state.color=v?'pace':'none';},()=>RUN&&!isPace(RUN)?'Tempo-Farben':'Pace-Farben'],
+    ['hrc','Puls-Farben',()=>single()&&RUN.hasHR&&!TEMPLATES[state.tpl].noColor,()=>state.color==='hr',v=>{state.color=v?'hr':'none';}],
     ['echo','Tempo-Echo',()=>single()&&!TEMPLATES[state.tpl].noEcho],
     ['km','Kilometermarken',single],['ends','Start & Ziel',single],
-    ['map','Kartengrundlage',()=>single()||state.view==='heat',null,v=>{state.map=v;if(v)loadMap();mapStatus();}]
+    ['map','Kartengrundlage',()=>single()?!TEMPLATES[state.tpl].noMap:state.view==='heat',null,v=>{state.map=v;if(v)loadMap();mapStatus();}]
   ].map(([k,l,ok,get,set,dyn])=>({id:'el-'+k,label:l,ok,dyn,get:get||(()=>state[k]),set:set||(v=>{state[k]=v;})})));
   const GL={pace:()=>RUN&&isPace(RUN)?'Pace-Kurve':'Tempo-Kurve',splits:()=>RUN&&seg(RUN).len===1000?'Km-Splits':`Abschnitte (${RUN?seg(RUN).name:'km'})`};
   chipGroup('#graphchips',GRAPHS.map(([k,l])=>({id:'gr-'+k,label:l,dyn:GL[k]||null,get:()=>state.graphs.includes(k),
@@ -1300,10 +1363,10 @@ $('#col-fg').oninput=e=>setColor('fg',e.target.value.toUpperCase());
 $('#col-reset').onclick=()=>{delete state.colors[state.tpl];syncAll();schedule();};
 
 /* ---- Einstellungen als Datei ---- */
-$('#presetsave').onclick=()=>saveFile('laufspur-einstellungen.json',new Blob([JSON.stringify({app:'Laufspur',version:1,einstellungen:presetOf()},null,2)],{type:'application/json'}));
+$('#presetsave').onclick=()=>saveFile('spurwerk-einstellungen.json',new Blob([JSON.stringify({app:'Spurwerk',version:1,einstellungen:presetOf()},null,2)],{type:'application/json'}));
 async function loadPresetFile(f){try{const j=JSON.parse(await f.text()),p=cleanPreset(j&&j.einstellungen);
     if(!Object.keys(p).length)throw 0;Object.assign(state,p);syncAll();schedule(true);toast('Einstellungen geladen.');}
-  catch(e){toast(`${f.name} ist keine Laufspur-Einstellungsdatei.`);}}
+  catch(e){toast(`${f.name} ist keine Spurwerk-Einstellungsdatei.`);}}
 $('#presetfile').onchange=e=>{const f=e.target.files[0];e.target.value='';if(f)loadPresetFile(f);};
 $('#presetreset').onclick=()=>{Object.assign(state,structuredClone(DEFAULTS));syncAll();schedule(true);toast('Einstellungen zurückgesetzt.');};
 
@@ -1319,7 +1382,7 @@ async function saveFile(name,blob){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},4000);toast('Gespeichert: '+name);
 }
-function baseName(){const S=cur(),d=state.mode==='coll'?'jahr':(S.start?S.start.toISOString().slice(0,10):'lauf');return `laufspur-${d}-${state.tpl}`;}
+function baseName(){const S=cur(),d=state.mode==='coll'?'jahr':(S.start?S.start.toISOString().slice(0,10):'lauf');return `spurwerk-${d}-${state.tpl}`;}
 async function rasterize(svgStr,w,h){const url=URL.createObjectURL(new Blob([svgStr],{type:'image/svg+xml'}));
   try{const img=new Image();img.src=url;await img.decode();const cv=document.createElement('canvas');cv.width=w;cv.height=h;
     const ctx=cv.getContext('2d');ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);return cv;}finally{URL.revokeObjectURL(url);}}
@@ -1338,7 +1401,7 @@ $('#pdfbtn').onclick=()=>busy($('#pdfbtn'),async()=>{const sz=sizeList(state.fmt
     const w=Math.round(mw/25.4*300),h=Math.round(mh/25.4*300),cv=await rasterize(renderSVG(state.tpl,'x',{bleed}),w,h);
     const doc=new lib.jsPDF({unit:'mm',format:[mw,mh],orientation:mw>mh?'l':'p',compress:true});
     doc.addImage(cv.toDataURL('image/jpeg',0.92),'JPEG',0,0,mw,mh);
-    doc.setProperties({title:`Laufspur · ${state.title}`,subject:`Endformat ${sz.mm[0]} × ${sz.mm[1]} mm, 3 mm Beschnitt rundum`});
+    doc.setProperties({title:`Spurwerk · ${state.title}`,subject:`Endformat ${sz.mm[0]} × ${sz.mm[1]} mm, 3 mm Beschnitt rundum`});
     await saveFile(`${baseName()}-${sz.mm[0]}x${sz.mm[1]}mm-beschnitt.pdf`,doc.output('blob'));}
   catch(e){toast(e&&e.message==='jspdf'?'Die PDF-Bibliothek konnte nicht geladen werden. Ist das Gerät online?':'Das PDF konnte nicht erzeugt werden. Versuche eine kleinere Größe.');}});
 $('#size').onchange=e=>{state.size=+e.target.value;fillSizes();schedule();};

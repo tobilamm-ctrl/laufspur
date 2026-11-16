@@ -1,6 +1,8 @@
-# Laufspur
+# Spurwerk
 
-GPX rein, Poster raus. Laufspur macht aus einer GPX-Datei (Garmin, Apple Health, Strava-Export …) ein druckfertiges Laufposter.
+GPX rein, Poster raus. Spurwerk macht aus GPX-Dateien (Garmin, Apple Health, Strava-Export …) druckfertige Poster von Läufen, Radtouren und Wanderungen.
+
+Früher hieß das Tool „Laufspur“; alte Einstellungsdateien lassen sich weiter laden.
 Alles läuft im Browser; die GPX-Datei wird nirgends hochgeladen.
 
 **Starten:** `index.html` im Browser öffnen oder über GitHub Pages aufrufen.
@@ -8,7 +10,7 @@ Alles läuft im Browser; die GPX-Datei wird nirgends hochgeladen.
 ## Funktionen
 
 - **Sportarten:** Laufen, Radfahren, Wandern – automatisch erkannt (GPX-Feld `type` oder Geschwindigkeit), von Hand umstellbar. Je Sportart passende Tempo-Angabe (Pace oder km/h), Abschnitte (1, 5 oder 10 km), Kilometermarken, Titelvorschläge und eigene Kennzahl-Auswahl
-- **9 Vorlagen:** Tartan, Glut, Startnummer, Zielsprint, Stoppuhr, Riso, Medaille, Wellen, Pass (Höhenprofil in Steigungsfarben), jeweils mit zwei frei wählbaren Farben
+- **10 Vorlagen:** Tartan, Glut, Startnummer, Zielsprint, Stoppuhr, Riso, Medaille, Wellen, Pass (Höhenprofil in Steigungsfarben), Linienplan (Strecke als U-Bahn-Plan), jeweils mit zwei frei wählbaren Farben
 - **Lauf-Liste und Jahresposter:** neue GPX-Dateien kommen zur Liste dazu; ab zwei Aktivitäten gibt es das Jahresposter (alle oder je Jahr), als Kacheln (jeder Lauf einzeln) oder als Heatmap (alle Läufe übereinander), mit Jahressummen
 - **Kennzahlen nach Wahl:** Distanz, Zeit, Pace, Höhenmeter, Datum, Startzeit, schnellster Kilometer, Tempo, max. Tempo, höchster Punkt, max. Steigung, Ø Leistung, Ø Kadenz, Ø Puls, max. Puls, Platzierung, Startnummer
 - **Offizielles Ergebnis:** Platzierung, Startnummer und offizielle Zeit (ersetzt die Zeit der Uhr)

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Laufspur (erfundenes Beispiel)" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"><trk><name>Beispiellauf</name><trkseg>
+<gpx version="1.1" creator="Spurwerk (erfundenes Beispiel)" xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1"><trk><name>Beispiellauf</name><trkseg>
 <trkpt lat="48.1486704" lon="11.5755000"><ele>524.8</ele><time>2025-09-14T07:30:00Z</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>119</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
 <trkpt lat="48.1486910" lon="11.5755706"><ele>524.9</ele><time>2025-09-14T07:30:02Z</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>120</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
 <trkpt lat="48.1487113" lon="11.5756415"><ele>525.0</ele><time>2025-09-14T07:30:04Z</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>120</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
