@@ -45,14 +45,15 @@ site_file = ROOT / ('site.local.json' if webspace else 'site.json')
 if webspace and not site_file.exists():
     sys.exit('site.local.json fehlt: Vorlage site.json kopieren und ausfüllen.')
 site = json.loads(site_file.read_text(encoding='utf-8'))
-# E-Mail-Adresse nicht im Klartext einbetten: Zeichen umgedreht, verschoben und als Zahlen.
+# Name, Anschrift und E-Mail-Adresse nicht im Klartext einbetten: Zeichen umgedreht, verschoben und als Zahlen.
 # Die Seite setzt sie erst beim Öffnen von Impressum/Datenschutz wieder zusammen.
 v = site.get('verantwortlich', {})
-if v.get('email', '').strip():
-    key = 23
-    v['emailEnc'] = [(ord(c) + key + i * 7) % 65536 for i, c in enumerate(reversed(v['email'].strip()))]
-    v['emailKey'] = key
-v.pop('email', None)
+KEY = 23
+for f in ('name', 'anschrift', 'email'):
+    val = str(v.pop(f, '') or '').strip()
+    if val:
+        v[f + 'Enc'] = [(ord(c) + KEY + i * 7) % 65536 for i, c in enumerate(reversed(val))]
+v['key'] = KEY
 jspdf = (ROOT / 'vendor' / 'jspdf.umd.min.js').read_text(encoding='utf-8')
 body = read('head.html') + '\n' + read('markup.html') + '\n<script>\n' + jspdf + '\n</script>\n<script>\n' + script + '</script>\n'
 body = body.replace('__FONTS__', json.dumps(fonts)).replace('__SAMPLE__', json.dumps(sample(gpx), separators=(',', ':'))).replace('__SITE__', json.dumps(site, ensure_ascii=False))

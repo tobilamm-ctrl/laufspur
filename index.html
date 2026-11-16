@@ -1846,11 +1846,11 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&markMode)setMarkMod
 
 /* ================= Datenschutz und Impressum =================
    Die Angaben kommen aus site.json (beim Bauen eingebettet). Leere Felder werden als Platzhalter markiert. */
-const SITE = {"_hinweis": "Vorlage. Eigene Angaben in site.local.json eintragen (wird nicht ins Repo übernommen); fehlt sie, gilt diese Datei. Danach 'python3 src/build.py' ausführen.", "verantwortlich": {"name": "", "anschrift": ""}, "hoster": "", "impressum": false, "hosterAuftragsverarbeiter": false, "aufsicht": "", "stand": "November 2026"};
-function siteMail(){const v=SITE.verantwortlich||{};if(!Array.isArray(v.emailEnc))return '';
-  return v.emailEnc.map((n,i)=>String.fromCharCode((n-v.emailKey-i*7+65536*4)%65536)).reverse().join('');}
+const SITE = {"_hinweis": "Vorlage. Eigene Angaben in site.local.json eintragen (wird nicht ins Repo übernommen); fehlt sie, gilt diese Datei. Danach 'python3 src/build.py' ausführen.", "verantwortlich": {"key": 23}, "hoster": "", "impressum": false, "hosterAuftragsverarbeiter": false, "aufsicht": "", "stand": "November 2026"};
+function siteField(f){const v=SITE.verantwortlich||{},c=v[f+'Enc'];if(!Array.isArray(c))return v[f]||'';
+  return c.map((n,i)=>String.fromCharCode((n-v.key-i*7+65536*4)%65536)).reverse().join('');}
 function legalHTML(kind){
-  const v=Object.assign({},SITE.verantwortlich||{},{email:siteMail()}),f=(x,ph)=>x&&String(x).trim()?esc(x).replace(/\n/g,'<br>'):`<span class="todo">[${ph}]</span>`;
+  const v={name:siteField('name'),anschrift:siteField('anschrift'),email:siteField('email')},f=(x,ph)=>x&&String(x).trim()?esc(x).replace(/\n/g,'<br>'):`<span class="todo">[${ph}]</span>`;
   const who=`${f(v.name,'Name eintragen')}<br>${f(v.anschrift,'Anschrift eintragen')}<br>E-Mail: ${v.email&&v.email.trim()?`<a href="mailto:${esc(v.email.trim())}">${esc(v.email.trim())}</a>`:f('','E-Mail-Adresse eintragen')}`;
   if(kind==='impressum')return `<h3>Angaben gemäß § 5 DDG</h3><p>${who}</p><h3>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3><p>${f(v.name,'Name eintragen')}, Anschrift wie oben</p>`+
     `<h3>Hinweis</h3><p>Spurwerk ist ein nicht kommerzielles Hobbyprojekt. Es enthält keine Werbung und wird ohne Entgelt angeboten.</p>`+
